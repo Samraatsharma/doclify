@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #09090B;
+    color: #FFFFFF;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Geist', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.03em;
+  }
+}
+
+/* Custom Glass & Atmosphere */
+.glass-panel {
+  background: rgba(24, 24, 27, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(39, 39, 42, 0.7);
+}
+
+.glass-card {
+  background: rgba(24, 24, 27, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(39, 39, 42, 0.6);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: rgba(39, 39, 42, 0.55);
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.08);
+}
+
+.radial-glow-hero {
+  background: radial-gradient(circle at center, rgba(16, 185, 129, 0.12) 0%, rgba(9, 9, 11, 0) 70%);
+}
+
+.radial-glow-subtle {
+  background: radial-gradient(circle at center, rgba(16, 185, 129, 0.06) 0%, rgba(9, 9, 11, 0) 60%);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #09090B;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272A;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3F3F46;
+}
+
+/* Markdown Rendering inside Reader */
+.prose-doclify h1 {
+  font-size: 1.85rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #FFFFFF;
+  border-bottom: 1px solid #27272A;
+  padding-bottom: 0.5rem;
+}
+.prose-doclify h2 {
+  font-size: 1.4rem;
+  font-weight: 500;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: #F4F4F5;
+  border-bottom: 1px solid rgba(39, 39, 42, 0.4);
+  padding-bottom: 0.25rem;
+}
+.prose-doclify h3 {
+  font-size: 1.15rem;
+  font-weight: 500;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+  color: #E4E4E7;
+}
+.prose-doclify p {
+  margin-bottom: 0.85rem;
+  line-height: 1.65;
+  color: #D4D4D8;
+}
+.prose-doclify ul, .prose-doclify ol {
+  margin-left: 1.25rem;
+  margin-bottom: 0.85rem;
+  color: #D4D4D8;
+}
+.prose-doclify li {
+  margin-bottom: 0.35rem;
+}
+.prose-doclify code {
+  font-family: 'Geist Mono', monospace;
+  background: rgba(39, 39, 42, 0.8);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.875em;
+  color: #34D399;
+}
+.prose-doclify pre {
+  background: #121215;
+  border: 1px solid #27272A;
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+.prose-doclify pre code {
+  background: transparent;
+  padding: 0;
+  color: #E4E4E7;
+}
+.prose-doclify blockquote {
+  border-left: 3px solid #10B981;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #A1A1AA;
+  font-style: italic;
+}
+.prose-doclify a {
+  color: #10B981;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.prose-doclify table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+.prose-doclify th, .prose-doclify td {
+  border: 1px solid #27272A;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+.prose-doclify th {
+  background: rgba(39, 39, 42, 0.5);
+  font-weight: 500;
+}
