@@ -64,9 +64,9 @@ export default function FileExplorer({ project, files = [], onFileUpdated }) {
   );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[720px]">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-auto md:h-[720px]">
       {/* File List Pane */}
-      <div className="md:col-span-5 glass-panel rounded-2xl p-4 flex flex-col border border-[#27272A] overflow-hidden">
+      <div className="md:col-span-5 h-[360px] md:h-full glass-panel rounded-2xl p-4 flex flex-col border border-[#27272A] overflow-hidden">
         <div className="mb-3">
           <input
             type="text"
@@ -117,7 +117,7 @@ export default function FileExplorer({ project, files = [], onFileUpdated }) {
       </div>
 
       {/* Detail / Inspector Pane */}
-      <div className="md:col-span-7 glass-panel rounded-2xl p-6 flex flex-col border border-[#27272A] overflow-hidden">
+      <div className="md:col-span-7 h-[500px] md:h-full glass-panel rounded-2xl p-6 flex flex-col border border-[#27272A] overflow-hidden">
         {selectedFile ? (
           <>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#27272A]">

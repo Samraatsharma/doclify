@@ -62,7 +62,7 @@ export default function ProjectCreateModal({ isOpen, onClose, onProjectCreated }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-      <div className="bg-[#18181B] border border-[#27272A] rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl relative animate-in fade-in zoom-in duration-200">
+      <div className="bg-[#18181B] border border-[#27272A] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl relative animate-in fade-in zoom-in duration-200">
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#27272A]">

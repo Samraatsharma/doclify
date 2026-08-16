@@ -34,26 +34,33 @@ export default function HeroCanvas() {
     };
     window.addEventListener('mousemove', handleMouseMove);
 
-    // Generate 3D point cloud (Spherical/Toroidal organic particle structure)
-    const PARTICLE_COUNT = 1100;
-    const particles = [];
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(Math.random() * 2 - 1);
-      const radiusBase = 180 + Math.sin(theta * 3) * 35 + Math.cos(phi * 4) * 25;
-      const r = radiusBase * (0.85 + Math.random() * 0.3);
+    // Respect user prefers-reduced-motion setting
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-      particles.push({
-        x: r * Math.sin(phi) * Math.cos(theta),
-        y: r * Math.sin(phi) * Math.sin(theta),
-        z: r * Math.cos(phi),
-        baseX: r * Math.sin(phi) * Math.cos(theta),
-        baseY: r * Math.sin(phi) * Math.sin(theta),
-        baseZ: r * Math.cos(phi),
-        size: Math.random() * 1.5 + 0.8,
-        pulseSpeed: 0.0015 + Math.random() * 0.002,
-        pulseOffset: Math.random() * Math.PI * 2,
-      });
+    // Detect mobile viewport to scale down particle count for battery/CPU efficiency
+    const isMobileViewport = window.innerWidth < 768;
+    const PARTICLE_COUNT = prefersReducedMotion ? 0 : (isMobileViewport ? 350 : 1100);
+    
+    const particles = [];
+    if (!prefersReducedMotion) {
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(Math.random() * 2 - 1);
+        const radiusBase = 180 + Math.sin(theta * 3) * 35 + Math.cos(phi * 4) * 25;
+        const r = radiusBase * (0.85 + Math.random() * 0.3);
+
+        particles.push({
+          x: r * Math.sin(phi) * Math.cos(theta),
+          y: r * Math.sin(phi) * Math.sin(theta),
+          z: r * Math.cos(phi),
+          baseX: r * Math.sin(phi) * Math.cos(theta),
+          baseY: r * Math.sin(phi) * Math.sin(theta),
+          baseZ: r * Math.cos(phi),
+          size: Math.random() * 1.5 + 0.8,
+          pulseSpeed: 0.0015 + Math.random() * 0.002,
+          pulseOffset: Math.random() * Math.PI * 2,
+        });
+      }
     }
 
     let time = 0;
@@ -127,10 +134,17 @@ export default function HeroCanvas() {
         }
       }
 
-      animationFrameId = requestAnimationFrame(render);
+      if (!prefersReducedMotion) {
+        animationFrameId = requestAnimationFrame(render);
+      }
     };
 
-    render();
+    if (!prefersReducedMotion) {
+      render();
+    } else {
+      // Draw a single clean static radial gradient and a few fixed particles if requested, or keep it clear
+      ctx.clearRect(0, 0, width, height);
+    }
 
     return () => {
       window.removeEventListener('resize', handleResize);

@@ -134,16 +134,31 @@
   text-underline-offset: 3px;
 }
 .prose-doclify table {
+  display: block;
   width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   margin: 1rem 0;
+  -webkit-overflow-scrolling: touch;
 }
 .prose-doclify th, .prose-doclify td {
   border: 1px solid #27272A;
   padding: 0.5rem 0.75rem;
   text-align: left;
+  min-width: 120px; /* Ensures columns stay readable on tiny viewports */
 }
 .prose-doclify th {
   background: rgba(39, 39, 42, 0.5);
   font-weight: 500;
 }
+.prose-doclify pre {
+  background: #121215;
+  border: 1px solid #27272A;
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
