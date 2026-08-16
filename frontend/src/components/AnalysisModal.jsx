@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Sparkles, CheckCircle2, AlertCircle, Loader2, Terminal, ArrowRight, X } from 'lucide-react';
+import { apiUrl } from '../config/api';
 
 export default function AnalysisModal({ isOpen, onClose, project, model, onComplete }) {
   const [phase, setPhase] = useState('starting');
@@ -26,7 +27,7 @@ export default function AnalysisModal({ isOpen, onClose, project, model, onCompl
     setFinalReadme('');
 
     const queryParams = model ? `?model=${encodeURIComponent(model)}` : '';
-    const url = `/api/projects/${project.id}/analyze${queryParams}`;
+    const url = apiUrl(`/api/projects/${project.id}/analyze${queryParams}`);
 
     const controller = new AbortController();
 

@@ -10,6 +10,7 @@ import PipelineVisualizer from './components/PipelineVisualizer';
 import Dashboard from './components/Dashboard';
 import ProjectWorkspace from './components/ProjectWorkspace';
 import ProjectCreateModal from './components/ProjectCreateModal';
+import { apiUrl } from './config/api';
 
 export default function App() {
   const [view, setView] = useState('landing'); // 'landing' | 'dashboard' | 'workspace'
@@ -22,8 +23,8 @@ export default function App() {
   const fetchHealthAndProjects = async () => {
     try {
       const [healthRes, projectsRes] = await Promise.all([
-        fetch('/api/health'),
-        fetch('/api/projects')
+        fetch(apiUrl('/api/health')),
+        fetch(apiUrl('/api/projects'))
       ]);
 
       if (healthRes.ok) {

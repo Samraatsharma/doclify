@@ -37,16 +37,24 @@ app = FastAPI(
     version=__version__
 )
 
-# Enable CORS for local development
+# Configure CORS for local development and production domains
+cors_origins_env = os.environ.get("CORS_ORIGINS", "*").strip()
+allowed_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()] if cors_origins_env != "*" else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-WORKSPACE_ROOT = Path(".doclify_workspace").resolve()
+# In serverless environments (e.g. Vercel), redirect workspace to writable /tmp
+if os.environ.get("VERCEL") or os.environ.get("DOCLIFY_WORKSPACE_DIR"):
+    WORKSPACE_ROOT = Path(os.environ.get("DOCLIFY_WORKSPACE_DIR", "/tmp/.doclify_workspace")).resolve()
+else:
+    WORKSPACE_ROOT = Path(".doclify_workspace").resolve()
+
 WORKSPACE_PROJECTS_DIR = WORKSPACE_ROOT / "projects"
 WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
 WORKSPACE_PROJECTS_DIR.mkdir(parents=True, exist_ok=True)

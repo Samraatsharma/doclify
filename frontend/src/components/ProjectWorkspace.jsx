@@ -7,6 +7,7 @@ import FileExplorer from './FileExplorer';
 import ReadmeViewer from './ReadmeViewer';
 import AnalysisModal from './AnalysisModal';
 import PipelineVisualizer from './PipelineVisualizer';
+import { apiUrl } from '../config/api';
 
 export default function ProjectWorkspace({ project, onBack, onProjectDeleted }) {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'files' | 'readme' | 'settings'
@@ -21,10 +22,10 @@ export default function ProjectWorkspace({ project, onBack, onProjectDeleted }) 
   const fetchProjectDetails = async () => {
     try {
       const [projRes, filesRes, readmeRes, modelsRes] = await Promise.all([
-        fetch(`/api/projects/${project.id}`),
-        fetch(`/api/projects/${project.id}/files`),
-        fetch(`/api/projects/${project.id}/readme`),
-        fetch('/api/models')
+        fetch(apiUrl(`/api/projects/${project.id}`)),
+        fetch(apiUrl(`/api/projects/${project.id}/files`)),
+        fetch(apiUrl(`/api/projects/${project.id}/readme`)),
+        fetch(apiUrl('/api/models'))
       ]);
 
       if (projRes.ok) {
@@ -58,7 +59,7 @@ export default function ProjectWorkspace({ project, onBack, onProjectDeleted }) 
   const handleModelChange = async (newModel) => {
     setSelectedModel(newModel);
     try {
-      await fetch('/api/config/default-model', {
+      await fetch(apiUrl('/api/config/default-model'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: newModel, project_id: project.id })
@@ -72,7 +73,7 @@ export default function ProjectWorkspace({ project, onBack, onProjectDeleted }) 
     if (project.id === 'current') return;
     if (confirm(`Are you sure you want to remove project "${projectData.name}" from Doclify?`)) {
       try {
-        const res = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' });
+        const res = await fetch(apiUrl(`/api/projects/${project.id}`), { method: 'DELETE' });
         if (res.ok) {
           if (onProjectDeleted) onProjectDeleted(project.id);
         }

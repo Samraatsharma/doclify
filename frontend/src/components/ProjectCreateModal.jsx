@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, FolderOpen, UploadCloud, Github, AlertCircle, Loader2, Check } from 'lucide-react';
+import { apiUrl } from '../config/api';
 
 export default function ProjectCreateModal({ isOpen, onClose, onProjectCreated }) {
   const [tab, setTab] = useState('local'); // 'local' | 'upload' | 'github'
@@ -21,7 +22,7 @@ export default function ProjectCreateModal({ isOpen, onClose, onProjectCreated }
       let res;
       if (tab === 'local') {
         if (!localPath.trim()) throw new Error('Please enter a valid directory path.');
-        res = await fetch('/api/projects/create/local', {
+        res = await fetch(apiUrl('/api/projects/create/local'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ path: localPath.trim(), name: projectName.trim() || undefined })
@@ -32,13 +33,13 @@ export default function ProjectCreateModal({ isOpen, onClose, onProjectCreated }
         formData.append('file', selectedFile);
         if (projectName.trim()) formData.append('name', projectName.trim());
 
-        res = await fetch('/api/projects/create/upload', {
+        res = await fetch(apiUrl('/api/projects/create/upload'), {
           method: 'POST',
           body: formData
         });
       } else if (tab === 'github') {
         if (!githubUrl.trim()) throw new Error('Please enter a GitHub repository URL.');
-        res = await fetch('/api/projects/create/github', {
+        res = await fetch(apiUrl('/api/projects/create/github'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url: githubUrl.trim(), name: projectName.trim() || undefined })

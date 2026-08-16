@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileCode, FileText, Folder, CheckCircle, RefreshCw, Eye, Sparkles, Loader2, Code2 } from 'lucide-react';
+import { apiUrl } from '../config/api';
 
 export default function FileExplorer({ project, files = [], onFileUpdated }) {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -21,7 +22,7 @@ export default function FileExplorer({ project, files = [], onFileUpdated }) {
     const fetchContent = async () => {
       setLoadingContent(true);
       try {
-        const res = await fetch(`/api/projects/${project.id}/file-content?file_path=${encodeURIComponent(selectedFile.path)}`);
+        const res = await fetch(apiUrl(`/api/projects/${project.id}/file-content?file_path=${encodeURIComponent(selectedFile.path)}`));
         if (res.ok) {
           const data = await res.json();
           setFileContent(data.content || '');
@@ -42,7 +43,7 @@ export default function FileExplorer({ project, files = [], onFileUpdated }) {
     if (!selectedFile) return;
     setUpdating(true);
     try {
-      const res = await fetch(`/api/projects/${project.id}/update-file`, {
+      const res = await fetch(apiUrl(`/api/projects/${project.id}/update-file`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ file_path: selectedFile.path })
