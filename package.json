@@ -3,6 +3,8 @@
   "version": "0.2.2",
   "private": true,
   "scripts": {
-    "build": "cd frontend && npm install && npm run build"
+    "build": "cd frontend && npm install && npm run build",
+    "revia:dev": "npm --prefix revia run tauri dev",
+    "revia:build": "npm --prefix revia run tauri build"
   }
 }
