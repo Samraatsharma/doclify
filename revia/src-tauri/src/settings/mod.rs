@@ -1,7 +1,7 @@
 use crate::db::Database;
 use serde::{Deserialize, Serialize};
 
-pub const DEFAULT_SHORTCUT: &str = "CommandOrControl+Shift+Space";
+pub const DEFAULT_SHORTCUT: &str = "Control+Space";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {

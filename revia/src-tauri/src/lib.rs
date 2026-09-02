@@ -20,14 +20,41 @@ pub struct AppState {
     pub chrome_source: ChromeHistorySource,
 }
 
-fn toggle_window(app: &AppHandle) {
+#[cfg(target_os = "macos")]
+pub fn activate_app_macos() {
+    use objc2_app_kit::NSApplication;
+    use objc2::MainThreadMarker;
+    if let Some(mtm) = MainThreadMarker::new() {
+        let app = NSApplication::sharedApplication(mtm);
+        #[allow(deprecated)]
+        app.activateIgnoringOtherApps(true);
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn activate_app_macos() {}
+
+pub fn show_and_focus_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        if window.is_visible().unwrap_or(false) {
+        #[cfg(target_os = "macos")]
+        {
+            use tauri::ActivationPolicy;
+            let _ = app.set_activation_policy(ActivationPolicy::Regular);
+            activate_app_macos();
+        }
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+        let _ = window.emit("window-shown", ());
+    }
+}
+
+pub fn toggle_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        if window.is_visible().unwrap_or(false) && window.is_focused().unwrap_or(false) {
             let _ = window.hide();
         } else {
-            let _ = window.show();
-            let _ = window.unminimize();
-            let _ = window.set_focus();
+            show_and_focus_window(app);
         }
     }
 }
@@ -79,9 +106,16 @@ pub fn run() {
             commands::check_chrome_history_access,
             commands::open_url,
             commands::hide_search_window,
-            commands::show_search_window
+            commands::show_search_window,
+            commands::set_window_height,
+            commands::position_near_top,
+            commands::complete_onboarding,
+            commands::reset_onboarding
         ])
         .setup(move |app| {
+            // Position near top of screen initially
+            let _ = commands::position_near_top(app.handle().clone());
+
             // Register global shortcut
             if let Ok(shortcut) = shortcut_str.parse::<Shortcut>() {
                 if let Err(e) = app.global_shortcut().register(shortcut) {
@@ -92,7 +126,7 @@ pub fn run() {
             }
 
             // Create System Tray Menu
-            let search_item = MenuItem::with_id(app, "search", "Search Revia", true, None::<&str>)?;
+            let search_item = MenuItem::with_id(app, "search", "Search Revia (Ctrl+Space)", true, None::<&str>)?;
             let pause_item = MenuItem::with_id(app, "pause_toggle", "Pause / Resume Memory", true, None::<&str>)?;
             let reindex_item = MenuItem::with_id(app, "reindex", "Re-index Chrome History", true, None::<&str>)?;
             let settings_item = MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
@@ -112,11 +146,11 @@ pub fn run() {
             let _tray = TrayIconBuilder::new()
                 .menu(&tray_menu)
                 .show_menu_on_left_click(false)
-                .tooltip("Revia — Your computer remembers")
+                .tooltip("Revia — Your computer remembers (Ctrl+Space)")
                 .on_menu_event(|app, event| {
                     match event.id().as_ref() {
                         "search" => {
-                            toggle_window(app);
+                            show_and_focus_window(app);
                         }
                         "pause_toggle" => {
                             if let Some(state) = app.try_state::<AppState>() {
@@ -134,10 +168,8 @@ pub fn run() {
                             });
                         }
                         "settings" => {
+                            show_and_focus_window(app);
                             if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.unminimize();
-                                let _ = window.set_focus();
                                 let _ = window.emit("open-settings", ());
                             }
                         }

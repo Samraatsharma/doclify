@@ -120,10 +120,51 @@ pub fn hide_search_window(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub fn show_search_window(app: AppHandle) -> Result<(), String> {
+    crate::show_and_focus_window(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_window_height(app: AppHandle, height: f64) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_focus();
+        if let Ok(cur_size) = window.inner_size() {
+            let scale = window.scale_factor().unwrap_or(1.0);
+            let cur_w = cur_size.width as f64 / scale;
+            let _ = window.set_size(tauri::LogicalSize::new(cur_w.max(580.0), height.max(56.0)));
+        }
     }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn position_near_top(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Ok(Some(monitor)) = window.current_monitor() {
+            let screen_size = monitor.size();
+            let scale = monitor.scale_factor();
+            let screen_w = screen_size.width as f64 / scale;
+            let win_size = window.inner_size().unwrap_or(tauri::PhysicalSize::new(580, 56));
+            let win_w = win_size.width as f64 / scale;
+            let x = ((screen_w - win_w) / 2.0).max(20.0);
+            let y = 130.0;
+            let _ = window.set_position(tauri::LogicalPosition::new(x, y));
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn complete_onboarding(state: State<'_, AppState>) -> Result<(), String> {
+    let mut current = load_settings(&state.db);
+    current.has_completed_onboarding = true;
+    save_settings(&state.db, &current)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn reset_onboarding(state: State<'_, AppState>) -> Result<(), String> {
+    let mut current = load_settings(&state.db);
+    current.has_completed_onboarding = false;
+    save_settings(&state.db, &current)?;
     Ok(())
 }

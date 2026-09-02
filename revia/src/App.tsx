@@ -1,86 +1,125 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { HeaderBar } from "./components/HeaderBar";
-import { SearchWindow } from "./components/SearchWindow";
-import { SettingsModal } from "./components/SettingsModal";
+import { CompactAssistant } from "./components/CompactAssistant";
 import { Onboarding } from "./components/Onboarding";
+import { SettingsModal } from "./components/SettingsModal";
+import { useVoiceRecognition } from "./hooks/useVoiceRecognition";
 import { AppSettings, MemoryItem, MemoryStats } from "./types";
 
 export const App: React.FC = () => {
-  const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [stats, setStats] = useState<MemoryStats | null>(null);
   const [query, setQuery] = useState<string>("");
   const [results, setResults] = useState<MemoryItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isIndexing, setIsIndexing] = useState<boolean>(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [stats, setStats] = useState<MemoryStats | null>(null);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
 
-  // Load initial settings and memory stats
-  const loadInitialData = useCallback(async () => {
-    try {
-      const currentSettings = await invoke<AppSettings>("get_settings");
-      setSettings(currentSettings);
+  const searchTimeoutRef = useRef<number | null>(null);
 
-      if (!currentSettings.has_completed_onboarding) {
-        setShowOnboarding(true);
+  // Load initial settings and check onboarding status
+  useEffect(() => {
+    const initApp = async () => {
+      try {
+        const loadedSettings = await invoke<AppSettings>("get_settings");
+        setSettings(loadedSettings);
+
+        const loadedStats = await invoke<MemoryStats>("get_memory_stats");
+        setStats(loadedStats);
+
+        const localCompleted = localStorage.getItem("revia_onboarding_completed") === "true";
+        if (!loadedSettings.has_completed_onboarding && !localCompleted) {
+          setShowOnboarding(true);
+        } else {
+          // Pre-load recent items
+          executeSearch("");
+        }
+      } catch (e) {
+        console.error("Initialization error:", e);
+        // Fallback: don't lock user into blank screen
+        executeSearch("");
       }
+    };
 
-      const memoryStats = await invoke<MemoryStats>("get_memory_stats");
-      setStats(memoryStats);
-    } catch (e) {
-      console.error("Failed to load initial data:", e);
-    }
+    initApp();
   }, []);
 
+  // Listen for native events from tray and shortcuts
   useEffect(() => {
-    loadInitialData();
+    const unlistenSettings = listen("open-settings", () => {
+      setShowSettings(true);
+    });
 
-    // Listen for tray event "open-settings"
-    const unlistenPromise = listen("open-settings", () => {
-      setIsSettingsOpen(true);
+    const unlistenShown = listen("window-shown", () => {
+      // Re-trigger empty search or keep existing query focused
+      invoke("position_near_top").catch(() => {});
     });
 
     return () => {
-      unlistenPromise.then((unlisten) => unlisten());
+      unlistenSettings.then((u) => u());
+      unlistenShown.then((u) => u());
     };
-  }, [loadInitialData]);
+  }, []);
 
-  // Execute search when query or max_results changes
-  const executeSearch = useCallback(
-    async (searchQuery: string) => {
-      setIsLoading(true);
-      try {
-        const lim = settings?.max_results ?? 20;
-        const items = await invoke<MemoryItem[]>("search_memory", {
-          query: searchQuery,
-          limit: lim,
-        });
-        setResults(items);
-      } catch (e) {
-        console.error("Search failed:", e);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [settings?.max_results]
-  );
+  // Search execution
+  const executeSearch = useCallback(async (q: string) => {
+    setIsLoading(true);
+    try {
+      const items = await invoke<MemoryItem[]>("search_memory", {
+        query: q,
+        limit: settings?.max_results ?? 20,
+      });
+      setResults(items);
+    } catch (e) {
+      console.error("Search error:", e);
+      setResults([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [settings?.max_results]);
 
-  // Debounced search trigger
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      executeSearch(query);
-    }, 80);
-    return () => clearTimeout(timer);
-  }, [query, executeSearch]);
+  // Voice recognition hook
+  const {
+    isListening,
+    interimTranscript,
+    audioLevel,
+    toggleListening,
+  } = useVoiceRecognition((finalText) => {
+    if (finalText.trim().length > 0) {
+      setQuery(finalText);
+      executeSearch(finalText);
+    }
+  });
+
+  // Debounced search on query change (when not using voice)
+  const handleQueryChange = (newQuery: string) => {
+    setQuery(newQuery);
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      executeSearch(newQuery);
+    }, 120);
+  };
+
+  const handleSelectResult = async (item: MemoryItem) => {
+    try {
+      await invoke("open_url", { url: item.url });
+      await invoke("hide_search_window");
+    } catch (e) {
+      console.error("Failed to open URL:", e);
+    }
+  };
 
   const handleTogglePause = async () => {
     if (!settings) return;
     const nextPaused = !settings.is_paused;
     try {
       await invoke("set_pause_memory", { paused: nextPaused });
-      setSettings((prev) => (prev ? { ...prev, is_paused: nextPaused } : null));
+      setSettings({ ...settings, is_paused: nextPaused });
       const newStats = await invoke<MemoryStats>("get_memory_stats");
       setStats(newStats);
     } catch (e) {
@@ -107,83 +146,90 @@ export const App: React.FC = () => {
       setStats(newStats);
       executeSearch(query);
     } catch (e) {
-      console.error("Re-indexing failed:", e);
+      console.error("Reindex error:", e);
     } finally {
       setIsIndexing(false);
     }
   };
 
-  const handleSelectResult = async (item: MemoryItem) => {
-    try {
-      // Safe URL open via native backend
-      await invoke("open_url", { url: item.url });
-      // Hide the floating search window
-      await invoke("hide_search_window");
-    } catch (e) {
-      console.error("Failed to open result URL:", e);
-    }
-  };
-
   const handleCompleteOnboarding = async () => {
-    if (settings) {
-      const updated = { ...settings, has_completed_onboarding: true };
-      await handleUpdateSettings(updated);
+    try {
+      await invoke("complete_onboarding");
+      localStorage.setItem("revia_onboarding_completed", "true");
+    } catch (e) {
+      console.warn("Could not save onboarding flag:", e);
     }
     setShowOnboarding(false);
+    executeSearch("");
     const newStats = await invoke<MemoryStats>("get_memory_stats");
     setStats(newStats);
-    executeSearch("");
   };
 
-  if (!settings) {
-    return (
-      <div className="revia-window" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: "var(--text-tertiary)", fontSize: "13px" }}>Loading Revia...</div>
-      </div>
-    );
-  }
-
-  if (showOnboarding) {
-    return <Onboarding onComplete={handleCompleteOnboarding} />;
-  }
+  const handleResetOnboarding = () => {
+    setShowOnboarding(true);
+  };
 
   return (
-    <div className="revia-window">
-      {/* Top utility bar */}
-      <HeaderBar
-        stats={stats}
-        isPaused={settings.is_paused}
-        onTogglePause={handleTogglePause}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        isIndexing={isIndexing}
-      />
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        padding: "0",
+        margin: "0",
+        background: "transparent",
+        boxSizing: "border-box",
+        userSelect: "none",
+      }}
+    >
+      {showOnboarding ? (
+        <Onboarding
+          onComplete={handleCompleteOnboarding}
+          onClose={handleCompleteOnboarding}
+        />
+      ) : (
+        <CompactAssistant
+          query={query}
+          onQueryChange={handleQueryChange}
+          results={results}
+          isLoading={isLoading}
+          isPaused={settings?.is_paused ?? false}
+          isListening={isListening}
+          interimTranscript={interimTranscript}
+          audioLevel={audioLevel}
+          onToggleVoice={toggleListening}
+          onSelectResult={handleSelectResult}
+          onOpenSettings={() => setShowSettings(true)}
+          onTogglePause={handleTogglePause}
+          stats={stats}
+        />
+      )}
 
-      {/* Main search interface */}
-      <SearchWindow
-        query={query}
-        onQueryChange={setQuery}
-        results={results}
-        isLoading={isLoading}
-        isPaused={settings.is_paused}
-        onSelectResult={handleSelectResult}
-        onIndexNow={handleReindex}
-        onResume={handleTogglePause}
-      />
-
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        settings={settings}
-        onUpdateSettings={handleUpdateSettings}
-        stats={stats}
-        onRefreshStats={async () => {
-          const s = await invoke<MemoryStats>("get_memory_stats");
-          setStats(s);
-        }}
-        onReindex={handleReindex}
-        isIndexing={isIndexing}
-      />
+      {settings && (
+        <SettingsModal
+          isOpen={showSettings}
+          onClose={() => {
+            setShowSettings(false);
+            // restore height for assistant
+            let targetHeight = 56;
+            if (results.length > 0) targetHeight = 330;
+            invoke("set_window_height", { height: targetHeight }).catch(() => {});
+          }}
+          settings={settings}
+          onUpdateSettings={handleUpdateSettings}
+          stats={stats}
+          onRefreshStats={async () => {
+            const s = await invoke<MemoryStats>("get_memory_stats");
+            setStats(s);
+          }}
+          onReindex={handleReindex}
+          onResetOnboarding={handleResetOnboarding}
+          isIndexing={isIndexing}
+        />
+      )}
     </div>
   );
 };

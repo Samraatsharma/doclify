@@ -1,60 +1,78 @@
 import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
-  Compass,
-  Sparkles,
   Search,
-  ShieldCheck,
-  CheckCircle2,
+  Mic,
   ArrowRight,
-  Database,
+  ArrowLeft,
+  X,
+  CheckCircle2,
+  AlertTriangle,
   Loader2,
-  AlertCircle,
+  Sparkles,
 } from "lucide-react";
-import { ChromeAccessStatus, IngestionStats } from "../types";
+import { ReviaOrb } from "./ReviaOrb";
+import { IngestionStats } from "../types";
 
 interface OnboardingProps {
   onComplete: () => void;
+  onClose: () => void;
 }
 
-export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
+export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onClose }) => {
   const [step, setStep] = useState<number>(1);
-  const [accessStatus, setAccessStatus] = useState<ChromeAccessStatus | null>(null);
-  const [isCheckingAccess, setIsCheckingAccess] = useState(false);
-  const [isIndexing, setIsIndexing] = useState(false);
+  const [isIndexing, setIsIndexing] = useState<boolean>(false);
   const [indexStats, setIndexStats] = useState<IngestionStats | null>(null);
   const [indexError, setIndexError] = useState<string | null>(null);
 
+  // Adjust native window height for onboarding card
   useEffect(() => {
-    if (step === 3) {
-      checkAccess();
-    }
-  }, [step]);
+    invoke("set_window_height", { height: 380 }).catch(() => {});
+  }, []);
 
-  const checkAccess = async () => {
-    setIsCheckingAccess(true);
+  // Escape key allows dismissing or skipping onboarding anytime
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleSkip();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleFinish = async () => {
     try {
-      const res = await invoke<ChromeAccessStatus>("check_chrome_history_access");
-      setAccessStatus(res);
+      await invoke("complete_onboarding");
+      localStorage.setItem("revia_onboarding_completed", "true");
     } catch (e) {
-      console.error("Access check failed:", e);
-    } finally {
-      setIsCheckingAccess(false);
+      console.warn("Could not save onboarding state to DB:", e);
     }
+    onComplete();
+  };
+
+  const handleSkip = async () => {
+    try {
+      await invoke("complete_onboarding");
+      localStorage.setItem("revia_onboarding_completed", "true");
+    } catch (e) {
+      console.warn("Could not save onboarding state to DB:", e);
+    }
+    onClose();
   };
 
   const handleStartIndexing = async () => {
     setIsIndexing(true);
     setIndexError(null);
     try {
-      const stats = await invoke<IngestionStats>("ingest_chrome_history", { forceFull: true });
+      const stats = await invoke<IngestionStats>("ingest_chrome_history", { forceFull: false });
       setIndexStats(stats);
-      // Wait 1.5s to show completion before moving to finish
       setTimeout(() => {
-        onComplete();
-      }, 1500);
+        handleFinish();
+      }, 1200);
     } catch (e: any) {
-      setIndexError(typeof e === "string" ? e : e?.message ?? "Failed to index Chrome history");
+      const msg = typeof e === "string" ? e : e?.message ?? "Could not access Chrome history";
+      setIndexError(msg);
     } finally {
       setIsIndexing(false);
     }
@@ -62,114 +80,115 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   return (
     <div
+      className="revia-onboarding-card"
       style={{
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-        width: "100vw",
-        padding: "30px",
-        background: "var(--bg-app)",
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
+        width: "100%",
+        height: "100%",
+        borderRadius: "16px",
+        background: "var(--assistant-bg)",
+        backdropFilter: "blur(32px) saturate(190%)",
+        WebkitBackdropFilter: "blur(32px) saturate(190%)",
+        border: "1px solid var(--assistant-border)",
+        boxShadow: "var(--assistant-shadow)",
+        overflow: "hidden",
+        position: "relative",
       }}
     >
+      {/* Top Header Bar */}
       <div
+        className="titlebar-drag"
         style={{
-          width: "100%",
-          maxWidth: "480px",
-          background: "var(--bg-card)",
-          border: "1px solid var(--border-app)",
-          borderRadius: "14px",
-          padding: "28px",
-          boxShadow: "var(--shadow-popover)",
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
-          textAlign: "center",
+          justifyContent: "space-between",
+          padding: "12px 18px 8px 18px",
+          borderBottom: "1px solid var(--border-subtle)",
         }}
       >
-        {/* Step Indicator dots */}
-        <div style={{ display: "flex", gap: "6px", marginBottom: "20px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <ReviaOrb state="idle" size={20} />
+          <span style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--text-primary)" }}>
+            Revia Setup
+          </span>
+        </div>
+
+        {/* Step dots */}
+        <div style={{ display: "flex", gap: "5px" }} className="no-drag">
           {[1, 2, 3, 4].map((s) => (
             <div
               key={s}
               style={{
-                width: s === step ? "20px" : "6px",
-                height: "6px",
+                width: s === step ? "16px" : "5px",
+                height: "5px",
                 borderRadius: "3px",
                 background: s === step ? "var(--accent)" : "var(--border-subtle)",
-                transition: "all 0.25s ease",
+                transition: "all 0.2s ease",
               }}
             />
           ))}
         </div>
 
-        {/* SCREEN 1: WELCOME */}
+        {/* Skip button */}
+        <button
+          onClick={handleSkip}
+          className="no-drag"
+          title="Skip setup (Esc)"
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "var(--text-tertiary)",
+            fontSize: "11px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "3px",
+            padding: "3px 6px",
+            borderRadius: "4px",
+          }}
+        >
+          <span>Skip</span>
+          <X size={12} />
+        </button>
+      </div>
+
+      {/* Main Step Content */}
+      <div
+        style={{
+          flex: 1,
+          padding: "20px 24px",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          textAlign: "center",
+          alignItems: "center",
+        }}
+      >
+        {/* STEP 1: MEET REVIA */}
         {step === 1 && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
-            <div
-              style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "14px",
-                background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 4px 16px rgba(59, 130, 246, 0.45)",
-                color: "#ffffff",
-              }}
-            >
-              <Compass size={28} strokeWidth={2.4} />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+            <ReviaOrb state="idle" size={44} />
+            <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-primary)", marginTop: "4px" }}>
+              Meet Revia
+            </h2>
+            <div style={{ fontSize: "12.5px", color: "var(--accent)", fontWeight: 600 }}>
+              Your computer remembers, so you don’t have to.
             </div>
-            <div>
-              <h1 style={{ fontSize: "20px", fontWeight: 700, color: "var(--text-primary)" }}>
-                Welcome to Revia
-              </h1>
-              <div style={{ fontSize: "13px", color: "var(--accent)", fontWeight: 600, marginTop: "4px" }}>
-                Your computer remembers, so you don’t have to.
-              </div>
-            </div>
-            <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.6, maxWidth: "380px" }}>
-              Remember seeing something on your Mac—an article, a tool, a documentation page—but can't remember where?
-              Revia searches your local browsing memory so you find it instantly.
+            <p style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: "360px", marginTop: "2px" }}>
+              Remember seeing a webpage, documentation, or article, but can’t recall where? Revia is your local memory assistant that brings you right back.
             </p>
-            <button
-              onClick={() => setStep(2)}
-              style={{
-                marginTop: "10px",
-                width: "100%",
-                background: "var(--accent)",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "8px",
-                padding: "10px 16px",
-                fontSize: "13.5px",
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-                boxShadow: "0 2px 8px var(--accent-glow)",
-              }}
-            >
-              <span>Get Started</span>
-              <ArrowRight size={15} />
-            </button>
           </div>
         )}
 
-        {/* SCREEN 2: HOW IT WORKS */}
+        {/* STEP 2: INVOCATION SHORTCUT */}
         {step === 2 && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
             <div
               style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "14px",
+                width: "48px",
+                height: "48px",
+                borderRadius: "12px",
                 background: "var(--accent-subtle)",
                 display: "flex",
                 alignItems: "center",
@@ -177,75 +196,42 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 color: "var(--accent)",
               }}
             >
-              <Search size={28} />
+              <Search size={24} />
             </div>
-            <div>
-              <h2 style={{ fontSize: "19px", fontWeight: 700, color: "var(--text-primary)" }}>
-                How Revia Works
-              </h2>
-              <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                Fast, keyboard-first, native Mac utility
-              </div>
+            <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-primary)" }}>
+              Always One Keystroke Away
+            </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "4px 0" }}>
+              <kbd
+                style={{
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-app)",
+                  padding: "5px 12px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  fontFamily: "var(--font-mono)",
+                  color: "var(--accent)",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                }}
+              >
+                Control + Space
+              </kbd>
             </div>
-
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-                width: "100%",
-                textAlign: "left",
-                fontSize: "12.5px",
-                color: "var(--text-secondary)",
-              }}
-            >
-              <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                <span style={{ background: "var(--bg-pill)", padding: "2px 7px", borderRadius: "5px", fontWeight: 700, color: "var(--accent)" }}>1</span>
-                <div>Press <kbd style={{ background: "var(--bg-pill)", padding: "1px 5px", borderRadius: "4px" }}>Cmd+Shift+Space</kbd> anywhere on your Mac.</div>
-              </div>
-              <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                <span style={{ background: "var(--bg-pill)", padding: "2px 7px", borderRadius: "5px", fontWeight: 700, color: "var(--accent)" }}>2</span>
-                <div>Describe what you remember: <em>"article about AI yesterday"</em> or <em>"github react"</em>.</div>
-              </div>
-              <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                <span style={{ background: "var(--bg-pill)", padding: "2px 7px", borderRadius: "5px", fontWeight: 700, color: "var(--accent)" }}>3</span>
-                <div>Press <kbd style={{ background: "var(--bg-pill)", padding: "1px 5px", borderRadius: "4px" }}>↵ Enter</kbd> to jump straight to the page.</div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setStep(3)}
-              style={{
-                marginTop: "10px",
-                width: "100%",
-                background: "var(--accent)",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "8px",
-                padding: "10px 16px",
-                fontSize: "13.5px",
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-              }}
-            >
-              <span>Continue to Privacy & Permissions</span>
-              <ArrowRight size={15} />
-            </button>
+            <p style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: "340px" }}>
+              Press the shortcut anywhere on your Mac to summon Revia. You can also customize this anytime in Settings.
+            </p>
           </div>
         )}
 
-        {/* SCREEN 3: PERMISSIONS & PRIVACY */}
+        {/* STEP 3: SPEAK NATURALLY */}
         {step === 3 && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
             <div
               style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "14px",
+                width: "48px",
+                height: "48px",
+                borderRadius: "12px",
                 background: "rgba(16, 185, 129, 0.15)",
                 display: "flex",
                 alignItems: "center",
@@ -253,233 +239,213 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 color: "var(--success)",
               }}
             >
-              <ShieldCheck size={28} />
+              <Mic size={24} />
             </div>
-            <div>
-              <h2 style={{ fontSize: "19px", fontWeight: 700, color: "var(--text-primary)" }}>
-                Privacy & Permissions
-              </h2>
-              <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                Zero cloud. 100% on your machine.
-              </div>
-            </div>
-
-            <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-              Revia only requires read access to your local Google Chrome history. It creates a safe read-only snapshot and never modifies or deletes your browser files.
-            </p>
-
-            {/* Access verification banner */}
+            <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-primary)" }}>
+              Speak or Type
+            </h2>
             <div
               style={{
-                width: "100%",
-                background: accessStatus?.accessible
-                  ? "rgba(16, 185, 129, 0.12)"
-                  : "rgba(245, 158, 11, 0.12)",
-                border: accessStatus?.accessible
-                  ? "1px solid var(--success)"
-                  : "1px solid var(--warning)",
+                background: "var(--bg-pill)",
+                border: "1px solid var(--border-subtle)",
+                padding: "8px 14px",
                 borderRadius: "8px",
-                padding: "10px 14px",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                textAlign: "left",
                 fontSize: "12px",
+                fontStyle: "italic",
+                color: "var(--text-primary)",
               }}
             >
-              {isCheckingAccess ? (
-                <Loader2 size={16} className="spin-icon" color="var(--accent)" />
-              ) : accessStatus?.accessible ? (
-                <CheckCircle2 size={16} color="var(--success)" style={{ flexShrink: 0 }} />
-              ) : (
-                <AlertCircle size={16} color="var(--warning)" style={{ flexShrink: 0 }} />
-              )}
-              <div>
-                <div style={{ fontWeight: 600, color: accessStatus?.accessible ? "var(--success)" : "var(--warning)" }}>
-                  {accessStatus?.accessible ? "Chrome History Detected & Readable" : "Checking Chrome Access..."}
-                </div>
-                <div style={{ color: "var(--text-tertiary)", fontSize: "11px", marginTop: "2px" }}>
-                  {accessStatus?.item_count != null
-                    ? `Found ~${accessStatus.item_count} history records ready to index.`
-                    : "Verifying local path..."}
-                </div>
-              </div>
+              "Find that article about AI agents I saw yesterday..."
             </div>
-
-            <button
-              onClick={() => setStep(4)}
-              style={{
-                marginTop: "10px",
-                width: "100%",
-                background: "var(--accent)",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "8px",
-                padding: "10px 16px",
-                fontSize: "13.5px",
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-              }}
-            >
-              <span>Proceed to Indexing</span>
-              <ArrowRight size={15} />
-            </button>
+            <p style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: "340px" }}>
+              Click the microphone 🎙 or simply type what you remember. Revia searches your local browsing history instantly.
+            </p>
           </div>
         )}
 
-        {/* SCREEN 4: INITIAL INDEXING */}
+        {/* STEP 4: INDEXING & READY */}
         {step === 4 && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", width: "100%" }}>
-            <div
-              style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "14px",
-                background: "linear-gradient(135deg, #3b82f6, #10b981)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#ffffff",
-              }}
-            >
-              <Database size={28} />
-            </div>
-            <div>
-              <h2 style={{ fontSize: "19px", fontWeight: 700, color: "var(--text-primary)" }}>
-                Build Your Memory Index
-              </h2>
-              <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                Revia will now index your Chrome browsing history locally.
-              </div>
-            </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", width: "100%" }}>
+            <ReviaOrb state={isIndexing ? "searching" : indexStats ? "results" : "idle"} size={42} />
+            <h2 style={{ fontSize: "17px", fontWeight: 700, color: "var(--text-primary)" }}>
+              Ready to Remember
+            </h2>
 
             {isIndexing ? (
-              <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px", padding: "10px 0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--text-secondary)" }}>
-                  <span>Reading Chrome History...</span>
-                  <Loader2 size={14} className="spin-icon" color="var(--accent)" />
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12.5px", color: "var(--accent)" }}>
+                  <Loader2 size={14} className="spin-icon" />
+                  <span>Indexing local Chrome history...</span>
                 </div>
-                <div
-                  style={{
-                    height: "8px",
-                    width: "100%",
-                    background: "var(--bg-pill)",
-                    borderRadius: "4px",
-                    overflow: "hidden",
-                    position: "relative",
-                  }}
-                >
-                  <div
-                    style={{
-                      height: "100%",
-                      width: "65%",
-                      background: "linear-gradient(90deg, var(--accent), var(--success))",
-                      borderRadius: "4px",
-                      animation: "pulse 1.2s infinite alternate",
-                    }}
-                  />
+                <div style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>
+                  Zero cloud. Safe read-only copy.
                 </div>
               </div>
             ) : indexStats ? (
-              <div
-                style={{
-                  width: "100%",
-                  background: "rgba(16, 185, 129, 0.12)",
-                  border: "1px solid var(--success)",
-                  borderRadius: "8px",
-                  padding: "14px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "4px",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", color: "var(--success)", fontWeight: 700 }}>
-                  <CheckCircle2 size={16} />
-                  Memory Ready!
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--success)", fontSize: "13px", fontWeight: 600 }}>
+                <CheckCircle2 size={16} />
+                <span>Indexed {indexStats.total_stored_items} pages in {indexStats.duration_ms}ms!</span>
+              </div>
+            ) : indexError ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--warning)", fontSize: "12px", fontWeight: 600 }}>
+                  <AlertTriangle size={14} />
+                  <span>Something needs attention:</span>
                 </div>
-                <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                  Successfully indexed <strong>{indexStats.total_stored_items}</strong> pages in {indexStats.duration_ms}ms.
+                <div style={{ fontSize: "11px", color: "var(--text-secondary)", maxWidth: "320px" }}>
+                  {indexError}
+                </div>
+                <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                  <button
+                    onClick={handleStartIndexing}
+                    style={{
+                      background: "var(--accent)",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "6px",
+                      padding: "4px 10px",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Retry
+                  </button>
+                  <button
+                    onClick={handleFinish}
+                    style={{
+                      background: "var(--bg-pill)",
+                      color: "var(--text-secondary)",
+                      border: "1px solid var(--border-subtle)",
+                      borderRadius: "6px",
+                      padding: "4px 10px",
+                      fontSize: "11px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Continue anyway
+                  </button>
                 </div>
               </div>
             ) : (
-              <p style={{ fontSize: "12.5px", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                Click below to start indexing. It takes less than 2 seconds and runs entirely in the background.
+              <p style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: "340px" }}>
+                Revia indexes your local Chrome history. It takes under 100ms and never uploads any data to the cloud.
               </p>
-            )}
-
-            {indexError && (
-              <div style={{ fontSize: "12px", color: "var(--danger)", marginTop: "4px" }}>
-                {indexError}
-              </div>
-            )}
-
-            {!indexStats && (
-              <button
-                onClick={handleStartIndexing}
-                disabled={isIndexing}
-                style={{
-                  marginTop: "10px",
-                  width: "100%",
-                  background: "var(--accent)",
-                  color: "#ffffff",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "10px 16px",
-                  fontSize: "13.5px",
-                  fontWeight: 600,
-                  cursor: isIndexing ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  boxShadow: "0 2px 8px var(--accent-glow)",
-                  opacity: isIndexing ? 0.7 : 1,
-                }}
-              >
-                {isIndexing ? (
-                  <>
-                    <Loader2 size={15} className="spin-icon" />
-                    <span>Indexing History...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={15} />
-                    <span>Start Indexing Chrome</span>
-                  </>
-                )}
-              </button>
-            )}
-
-            {indexStats && (
-              <button
-                onClick={onComplete}
-                style={{
-                  marginTop: "10px",
-                  width: "100%",
-                  background: "var(--success)",
-                  color: "#ffffff",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "10px 16px",
-                  fontSize: "13.5px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Start Using Revia
-              </button>
             )}
           </div>
         )}
       </div>
-      <style>{`
-        .spin-icon { animation: spin 1s linear infinite; }
-        @keyframes pulse { from { opacity: 0.6; } to { opacity: 1; } }
-      `}</style>
+
+      {/* Navigation Footer */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 18px",
+          borderTop: "1px solid var(--border-subtle)",
+          background: "rgba(0, 0, 0, 0.08)",
+        }}
+      >
+        {step > 1 ? (
+          <button
+            onClick={() => setStep((s) => s - 1)}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--text-secondary)",
+              fontSize: "12px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            <ArrowLeft size={13} />
+            <span>Back</span>
+          </button>
+        ) : (
+          <div />
+        )}
+
+        <div style={{ display: "flex", gap: "8px" }}>
+          {step < 4 ? (
+            <button
+              onClick={() => setStep((s) => s + 1)}
+              style={{
+                background: "var(--accent)",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "6px",
+                padding: "6px 14px",
+                fontSize: "12px",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              <span>Continue</span>
+              <ArrowRight size={13} />
+            </button>
+          ) : !indexStats && !indexError ? (
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                onClick={handleStartIndexing}
+                disabled={isIndexing}
+                style={{
+                  background: "var(--accent)",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "6px",
+                  padding: "6px 14px",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  cursor: isIndexing ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                }}
+              >
+                <Sparkles size={13} />
+                <span>Index Chrome</span>
+              </button>
+              <button
+                onClick={handleFinish}
+                style={{
+                  background: "var(--bg-pill)",
+                  color: "var(--text-secondary)",
+                  border: "1px solid var(--border-subtle)",
+                  borderRadius: "6px",
+                  padding: "6px 10px",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                }}
+              >
+                Finish
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleFinish}
+              style={{
+                background: "var(--success)",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "6px",
+                padding: "6px 16px",
+                fontSize: "12px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Start Using Revia
+            </button>
+          )}
+        </div>
+      </div>
+      <style>{`.spin-icon { animation: spin 1s linear infinite; }`}</style>
     </div>
   );
 };
