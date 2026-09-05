@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" width="100%" height="100%">
+  <defs>
+    <!-- Gradients -->
+    <radialGradient id="deskGlow" cx="50%" cy="20%" r="80%">
+      <stop offset="0%" stop-color="#181a24"/>
+      <stop offset="100%" stop-color="#0b0c10"/>
+    </radialGradient>
+
+    <radialGradient id="orbGlow" cx="40%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#c084fc"/>
+      <stop offset="80%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </radialGradient>
+
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <style>
+    @keyframes pulseOrb {
+      0%, 100% { transform: scale(1); opacity: 0.9; }
+      50% { transform: scale(1.12); opacity: 1; filter: drop-shadow(0 0 12px #a855f7); }
+    }
+    @keyframes typingText {
+      0%, 15% { opacity: 0; width: 0; }
+      20%, 85% { opacity: 1; }
+      90%, 100% { opacity: 0; }
+    }
+    @keyframes showResults {
+      0%, 25% { opacity: 0; transform: translateY(-10px); }
+      35%, 85% { opacity: 1; transform: translateY(0); }
+      92%, 100% { opacity: 0; transform: translateY(-10px); }
+    }
+    @keyframes highlightSelect {
+      0%, 55% { background: #1a1f2c; stroke: #2d3748; }
+      65%, 85% { stroke: #8b5cf6; fill: #1e1b4b; }
+      90%, 100% { stroke: #2d3748; }
+    }
+    @keyframes shortcutBadge {
+      0%, 10% { opacity: 1; transform: scale(1); }
+      15%, 25% { opacity: 0.4; transform: scale(0.95); }
+      30%, 100% { opacity: 1; transform: scale(1); }
+    }
+
+    .animated-orb { transform-origin: 228px 105px; animation: pulseOrb 3s infinite ease-in-out; }
+    .results-group { animation: showResults 8s infinite cubic-bezier(0.16, 1, 0.3, 1); }
+    .shortcut-pill { animation: shortcutBadge 8s infinite ease-in-out; }
+    
+    .text-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; font-weight: 600; fill: #f8fafc; }
+    .text-url { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 11.5px; fill: #94a3b8; }
+    .text-snippet { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; fill: #cbd5e1; }
+    .text-badge { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 10px; font-weight: 700; fill: #c084fc; }
+  </style>
+
+  <!-- Desktop Background Mockup -->
+  <rect width="900" height="520" rx="14" fill="url(#deskGlow)" stroke="#232733" stroke-width="1.5"/>
+
+  <!-- Desktop Header Indicator -->
+  <g transform="translate(30, 24)">
+    <circle cx="0" cy="0" r="5" fill="#ef4444" opacity="0.8"/>
+    <circle cx="16" cy="0" r="5" fill="#f59e0b" opacity="0.8"/>
+    <circle cx="32" cy="0" r="5" fill="#10b981" opacity="0.8"/>
+  </g>
+
+  <!-- Top Center Shortcut Prompt -->
+  <g transform="translate(450, 32)" text-anchor="middle" class="shortcut-pill">
+    <rect x="-140" y="-14" width="280" height="28" rx="14" fill="#161922" stroke="#2d3345" stroke-width="1"/>
+    <text y="4" font-family="-apple-system, sans-serif" font-size="11.5" font-weight="600" fill="#94a3b8">
+      Press <tspan fill="#f1f5f9" font-weight="700">⌃ ⌃</tspan> or <tspan fill="#f1f5f9" font-weight="700">Alt + Space</tspan> to summon
+    </text>
+  </g>
+
+  <!-- REVIA FLOATING CAPSULE CONTAINER -->
+  <g transform="translate(160, 75)" filter="url(#cardShadow)">
+    
+    <!-- Outer Glass Capsule Frame -->
+    <rect width="580" height="390" rx="20" fill="#0f1219" fill-opacity="0.92" stroke="#2a3245" stroke-width="1.5"/>
+
+    <!-- Search Input Bar (Top 60px) -->
+    <g transform="translate(0, 0)">
+      <!-- Memory Core Orb Icon -->
+      <g class="animated-orb" transform="translate(32, 30)">
+        <circle cx="0" cy="0" r="14" fill="url(#orbGlow)" filter="url(#softGlow)"/>
+        <ellipse cx="0" cy="0" rx="20" ry="7" fill="none" stroke="#a855f7" stroke-width="1" opacity="0.6"/>
+      </g>
+
+      <!-- Simulated Typed Search Query -->
+      <text x="64" y="36" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="15.5" font-weight="500" fill="#f8fafc">
+        quantum computing paper from tuesday
+      </text>
+
+      <!-- Cursor Pulse -->
+      <line x1="368" y1="20" x2="368" y2="40" stroke="#8b5cf6" stroke-width="2">
+        <animate attributeName="opacity" values="1;0;1" dur="0.8s" repeatCount="indefinite"/>
+      </line>
+
+      <!-- Right Action Icons (Mic + Badge) -->
+      <g transform="translate(510, 20)">
+        <rect x="0" y="0" width="46" height="22" rx="6" fill="#1e1b4b" stroke="#6d28d9" stroke-width="1"/>
+        <text x="23" y="15" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" font-weight="700" fill="#c084fc">ESC</text>
+      </g>
+    </g>
+
+    <!-- Divider -->
+    <line x1="20" y1="62" x2="560" y2="62" stroke="#1e2638" stroke-width="1"/>
+
+    <!-- SEARCH RESULTS GROUP (Animated Expansion) -->
+    <g transform="translate(20, 76)" class="results-group">
+
+      <!-- RESULT CARD 1 (Top Match / Highlighted) -->
+      <g transform="translate(0, 0)">
+        <rect width="540" height="88" rx="12" fill="#181b26" stroke="#8b5cf6" stroke-width="1.2"/>
+        <text x="16" y="24" class="text-title">Fault-Tolerant Quantum Computation with Surface Codes</text>
+        <text x="16" y="44" class="text-url">arxiv.org/abs/2304.08512 · Visited Tuesday 3:42 PM</text>
+        <text x="16" y="68" class="text-snippet">"...demonstrates error suppression thresholds using 2D superconducting transmon lattice..."</text>
+        
+        <!-- Match Score Badge -->
+        <rect x="445" y="12" width="80" height="20" rx="6" fill="#2e1065" stroke="#7c3aed" stroke-width="0.8"/>
+        <text x="485" y="26" text-anchor="middle" class="text-badge">98% MATCH</text>
+      </g>
+
+      <!-- RESULT CARD 2 -->
+      <g transform="translate(0, 98)">
+        <rect width="540" height="84" rx="12" fill="#131620" stroke="#222a3b" stroke-width="1"/>
+        <text x="16" y="24" class="text-title">Nature Physics — Scalable Neutral Atom Quantum Processors</text>
+        <text x="16" y="44" class="text-url">nature.com/articles/s41567-024 · Chrome History · 2 days ago</text>
+        <text x="16" y="66" class="text-snippet">"Hardware architecture overview for multi-qubit coherent optical tweezer arrays..."</text>
+        
+        <rect x="445" y="12" width="80" height="20" rx="6" fill="#0f172a" stroke="#334155" stroke-width="0.8"/>
+        <text x="485" y="26" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" font-weight="700" fill="#94a3b8">89% MATCH</text>
+      </g>
+
+      <!-- RESULT CARD 3 -->
+      <g transform="translate(0, 192)">
+        <rect width="540" height="84" rx="12" fill="#131620" stroke="#222a3b" stroke-width="1"/>
+        <text x="16" y="24" class="text-title">IBM Quantum Platform — Qiskit Runtime &amp; Transpiler Guide</text>
+        <text x="16" y="44" class="text-url">docs.quantum.ibm.com/guides · Visited Aug 28</text>
+        <text x="16" y="66" class="text-snippet">"Execution primitives for high-performance quantum circuit optimization..."</text>
+        
+        <rect x="445" y="12" width="80" height="20" rx="6" fill="#0f172a" stroke="#334155" stroke-width="0.8"/>
+        <text x="485" y="26" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" font-weight="700" fill="#94a3b8">82% MATCH</text>
+      </g>
+
+      <!-- Footer Action Hint -->
+      <g transform="translate(0, 288)">
+        <text x="4" y="14" font-family="-apple-system, sans-serif" font-size="11" fill="#64748b">
+          ↑↓ to navigate · <tspan fill="#cbd5e1" font-weight="600">Enter</tspan> to open in browser · <tspan fill="#cbd5e1" font-weight="600">Esc</tspan> to hide
+        </text>
+        <text x="540" y="14" text-anchor="end" font-family="ui-monospace, monospace" font-size="11" fill="#8b5cf6">
+          SQLite FTS5 + FastEmbed (12ms)
+        </text>
+      </g>
+    </g>
+  </g>
+</svg>

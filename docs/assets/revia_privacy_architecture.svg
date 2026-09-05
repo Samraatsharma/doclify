@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 280" width="100%" height="100%">
+  <defs>
+    <linearGradient id="privCard" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#0b101b"/>
+    </linearGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    .t1 { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 15px; font-weight: 700; fill: #ffffff; }
+    .t2 { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 12px; fill: #94a3b8; }
+    .t-code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; fill: #34d399; }
+    .t-blocked { font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; fill: #f87171; }
+  </style>
+
+  <rect width="920" height="280" rx="14" fill="#07090e" stroke="#1c2230" stroke-width="1.2"/>
+
+  <!-- Left Zone: YOUR DEVICE (Secure Boundary) -->
+  <g transform="translate(30, 30)">
+    <rect width="520" height="220" rx="12" fill="#0d1424" stroke="#059669" stroke-width="1.5" stroke-dasharray="6 4"/>
+    
+    <g transform="translate(20, 20)">
+      <circle cx="10" cy="10" r="10" fill="url(#shieldGrad)"/>
+      <text x="10" y="14" text-anchor="middle" font-size="11" fill="#ffffff">✓</text>
+      <text x="30" y="15" font-family="-apple-system, sans-serif" font-size="13" font-weight="700" fill="#34d399">100% LOCAL DEVICE BOUNDARY</text>
+    </g>
+
+    <!-- Chrome History Box -->
+    <g transform="translate(20, 56)">
+      <rect width="220" height="64" rx="8" fill="url(#privCard)" stroke="#1e293b" stroke-width="1"/>
+      <text x="14" y="24" class="t1">Chrome History</text>
+      <text x="14" y="44" class="t2">Parsed from local SQLite DB</text>
+    </g>
+
+    <!-- Arrow down -->
+    <path d="M 130 120 L 130 140" stroke="#059669" stroke-width="2" stroke-linecap="round"/>
+
+    <!-- Revia Local Database Box -->
+    <g transform="translate(20, 140)">
+      <rect width="480" height="64" rx="8" fill="url(#privCard)" stroke="#059669" stroke-width="1.2"/>
+      <text x="14" y="24" class="t1">Revia Memory Database (`revia_memory.db`)</text>
+      <text x="14" y="46" class="t-code">Encrypted SQLite FTS5 + FastEmbed ONNX Embeddings</text>
+    </g>
+
+    <!-- Assistant UX Box -->
+    <g transform="translate(260, 56)">
+      <rect width="240" height="64" rx="8" fill="url(#privCard)" stroke="#1e293b" stroke-width="1"/>
+      <text x="14" y="24" class="t1">Revia Search Capsule</text>
+      <text x="14" y="44" class="t2">Instant &lt;12ms on-device query</text>
+    </g>
+  </g>
+
+  <!-- Middle Divider / Firewall -->
+  <g transform="translate(580, 40)">
+    <line x1="0" y1="0" x2="0" y2="200" stroke="#ef4444" stroke-width="2" stroke-dasharray="4 4"/>
+    <circle cx="0" cy="100" r="14" fill="#450a0a" stroke="#ef4444" stroke-width="1.5"/>
+    <text x="0" y="105" text-anchor="middle" font-size="13" fill="#fca5a5">✕</text>
+  </g>
+
+  <!-- Right Zone: ZERO CLOUD / NO REMOTE DATA -->
+  <g transform="translate(620, 50)">
+    <rect width="270" height="180" rx="12" fill="#140a0a" stroke="#7f1d1d" stroke-width="1"/>
+    <text x="20" y="36" font-family="-apple-system, sans-serif" font-size="14" font-weight="700" fill="#f87171">ZERO CLOUD CALLS</text>
+    
+    <text x="20" y="68" class="t-blocked">✕ No External AI / LLM APIs</text>
+    <text x="20" y="96" class="t-blocked">✕ No Analytics / Tracking</text>
+    <text x="20" y="124" class="t-blocked">✕ No Telemetry Beacons</text>
+    <text x="20" y="152" class="t-blocked">✕ No Data Uploads</text>
+  </g>
+</svg>

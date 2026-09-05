@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 340" width="100%" height="100%">
+  <defs>
+    <linearGradient id="pipeCard" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#181c26"/>
+      <stop offset="100%" stop-color="#0f1219"/>
+    </linearGradient>
+    <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    .hdr { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 15px; font-weight: 700; fill: #ffffff; }
+    .sub { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 12px; fill: #94a3b8; }
+    .code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; fill: #38bdf8; }
+    .badge { font-family: ui-monospace, monospace; font-size: 10px; font-weight: 700; fill: #c084fc; }
+  </style>
+
+  <rect width="920" height="340" rx="14" fill="#090b10" stroke="#1e2330" stroke-width="1.2"/>
+
+  <!-- Left: User Query Input -->
+  <g transform="translate(30, 115)">
+    <rect width="180" height="110" rx="10" fill="url(#pipeCard)" stroke="#334155" stroke-width="1"/>
+    <text x="16" y="32" class="hdr">User Query</text>
+    <text x="16" y="54" class="code">"quantum papers"</text>
+    <text x="16" y="80" class="sub">Debounced (150ms)</text>
+    <text x="16" y="98" class="sub">Atomic Sequence ID</text>
+  </g>
+
+  <!-- Branches to FTS5 & Vector -->
+  <path d="M 210 170 L 250 170 L 250 90 L 280 90" stroke="#64748b" stroke-width="1.8" fill="none"/>
+  <path d="M 210 170 L 250 170 L 250 250 L 280 250" stroke="#64748b" stroke-width="1.8" fill="none"/>
+
+  <!-- Branch 1: SQLite FTS5 BM25 -->
+  <g transform="translate(280, 35)">
+    <rect width="270" height="110" rx="10" fill="url(#pipeCard)" stroke="#7c3aed" stroke-width="1.2"/>
+    <rect x="180" y="12" width="76" height="18" rx="4" fill="#2e1065"/>
+    <text x="218" y="25" text-anchor="middle" class="badge">WEIGHT 0.6</text>
+    
+    <text x="16" y="32" class="hdr">SQLite 3 FTS5</text>
+    <text x="16" y="56" class="sub">BM25 Full-Text Match Ranking</text>
+    <text x="16" y="76" class="code">MATCH 'quantum* AND papers*'</text>
+    <text x="16" y="96" class="sub">Indexed in &lt;5ms</text>
+  </g>
+
+  <!-- Branch 2: FastEmbed ONNX Embeddings -->
+  <g transform="translate(280, 195)">
+    <rect width="270" height="110" rx="10" fill="url(#pipeCard)" stroke="#0284c7" stroke-width="1.2"/>
+    <rect x="180" y="12" width="76" height="18" rx="4" fill="#082f49"/>
+    <text x="218" y="25" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" font-weight="700" fill="#38bdf8">WEIGHT 0.4</text>
+    
+    <text x="16" y="32" class="hdr">FastEmbed ONNX</text>
+    <text x="16" y="56" class="sub">all-MiniLM-L6-v2 (384-dim)</text>
+    <text x="16" y="76" class="code">CosineSimilarity(v_q, v_d)</text>
+    <text x="16" y="96" class="sub">Conceptual Semantic Search</text>
+  </g>
+
+  <!-- Merge to Hybrid Reranker -->
+  <path d="M 550 90 L 580 90 L 580 170 L 610 170" stroke="#64748b" stroke-width="1.8" fill="none"/>
+  <path d="M 550 250 L 580 250 L 580 170 L 610 170" stroke="#64748b" stroke-width="1.8" fill="none"/>
+
+  <!-- Right: Hybrid Reranker & Ranked Results -->
+  <g transform="translate(610, 85)">
+    <rect width="280" height="170" rx="10" fill="url(#pipeCard)" stroke="url(#scoreGrad)" stroke-width="1.5"/>
+    <text x="16" y="32" class="hdr">Hybrid Reranker</text>
+    <text x="16" y="56" class="code">Score = 0.6·FTS + 0.4·Cos</text>
+    <line x1="16" y1="70" x2="264" y2="70" stroke="#2a3245" stroke-width="1"/>
+    
+    <!-- Top Result Mini Card -->
+    <rect x="16" y="82" width="248" height="34" rx="6" fill="#1e1b4b" stroke="#6d28d9" stroke-width="0.8"/>
+    <text x="26" y="103" font-family="-apple-system, sans-serif" font-size="11.5" font-weight="600" fill="#f8fafc">1. Quantum Surface Codes (98%)</text>
+    
+    <rect x="16" y="122" width="248" height="34" rx="6" fill="#131620" stroke="#222a3b" stroke-width="0.8"/>
+    <text x="26" y="143" font-family="-apple-system, sans-serif" font-size="11.5" fill="#cbd5e1">2. Nature Physics Qubits (89%)</text>
+  </g>
+</svg>

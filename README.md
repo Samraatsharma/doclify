@@ -1,186 +1,156 @@
 <div align="center">
 
-  <img src="docs/assets/revia_icon.png" alt="Revia Logo" width="96" height="96" />
+  <img src="docs/assets/revia_hero_banner.svg" alt="Revia Hero Banner" width="100%" />
 
-  # REVIA
-
-  **"Your computer remembers, so you don't have to."**
-
-  *An ambient, privacy-first on-device personal memory search engine for macOS & Windows.*
-
-  [![macOS](https://img.shields.io/badge/macOS-12.0%2B%20(Apple%20Silicon)-000000?style=for-the-badge&logo=apple&logoColor=white)](https://revia-3v8.pages.dev/downloads/Revia_1.5.0_aarch64.zip)
-  [![Windows](https://img.shields.io/badge/Windows-10%2F11%20(x64%20Beta)-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://revia-3v8.pages.dev/downloads/Revia_Windows_x64.zip)
-  [![Rust](https://img.shields.io/badge/Backend-Rust%201.98-DEA584?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
-  [![Tauri v2](https://img.shields.io/badge/Framework-Tauri%20v2-24C8D8?style=for-the-badge&logo=tauri&logoColor=white)](https://tauri.app/)
-  [![Privacy](https://img.shields.io/badge/Privacy-100%25%20On--Device-10B981?style=for-the-badge&logo=shield&logoColor=white)](#-100-local-privacy-architecture)
-  [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-
-  <br />
+  <br /><br />
 
   <a href="https://revia-3v8.pages.dev/downloads/Revia_1.5.0_aarch64.zip">
-    <img src="https://img.shields.io/badge/Download_for_Mac-v1.5.0_Beta_(ZIP)-11141A?style=for-the-badge&logo=apple&logoColor=white" alt="Download Revia for Mac" />
+    <img src="https://img.shields.io/badge/_Download_for_Mac-v1.5.0_Beta_(Apple_Silicon)-11141A?style=for-the-badge&logo=apple&logoColor=white" alt="Download Revia for Mac" />
   </a>
   &nbsp;&nbsp;
   <a href="https://revia-3v8.pages.dev/downloads/Revia_Windows_x64.zip">
-    <img src="https://img.shields.io/badge/Download_for_Windows-x64_Beta_(ZIP)-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download Revia for Windows" />
+    <img src="https://img.shields.io/badge/⊞_Download_for_Windows-x64_Beta_(ZIP)-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download Revia for Windows" />
   </a>
   &nbsp;&nbsp;
   <a href="https://revia-3v8.pages.dev">
-    <img src="https://img.shields.io/badge/Live_Website-revia--3v8.pages.dev-8B5CF6?style=for-the-badge&logo=cloudflare&logoColor=white" alt="Visit Revia Website" />
+    <img src="https://img.shields.io/badge/🌐_Official_Website-revia--3v8.pages.dev-7C3AED?style=for-the-badge&logo=cloudflare&logoColor=white" alt="Visit Official Revia Website" />
   </a>
 
+  <br /><br />
+
+  [![macOS](https://img.shields.io/badge/macOS-12.0%2B%20(Apple%20Silicon)-000000?style=flat-square&logo=apple&logoColor=white)](https://revia-3v8.pages.dev/downloads/Revia_1.5.0_aarch64.zip)
+  [![Windows](https://img.shields.io/badge/Windows-10%2F11%20(x64%20Beta)-0078D4?style=flat-square&logo=windows&logoColor=white)](https://revia-3v8.pages.dev/downloads/Revia_Windows_x64.zip)
+  [![Rust](https://img.shields.io/badge/Backend-Rust%201.98-DEA584?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org/)
+  [![Tauri v2](https://img.shields.io/badge/Framework-Tauri%20v2-24C8D8?style=flat-square&logo=tauri&logoColor=white)](https://tauri.app/)
+  [![Privacy](https://img.shields.io/badge/Privacy-100%25%20On--Device-10B981?style=flat-square&logo=shield&logoColor=white)](#-privacy--100-local-architecture)
+  [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+
 </div>
 
 ---
 
-## 💡 What is Revia?
+## 🧭 The Problem
 
-**Revia** is a lightweight, ambient desktop assistant that gives your computer a permanent personal memory. It silently indexes your browsing activity, documents, and notes into an encrypted, local SQLite FTS5 database paired with ONNX vector embeddings.
+> *"I know I saw that paper three days ago... was it on arXiv, GitHub, or a browser tab?"*
 
-When you need to find that article, paper, or web snippet you read three days ago—even when you can't remember its title or where you saw it—simply double-tap `Control` (`⌃ ⌃`) on macOS or press `Alt + Space` on Windows to summon Revia instantly.
+Every day, knowledge workers, researchers, and engineers read hundreds of articles, documentation pages, code repositories, and research notes. 
 
-<br />
+Traditional bookmarks require tedious manual effort, and standard browser history search requires remembering the exact URL or title. When you only remember a **concept**, the information is effectively lost in the noise.
+
+---
+
+## 💡 The Revia Idea
+
+**Your computer becomes searchable memory.**
+
+Revia is an ambient, on-device cognitive memory assistant. It silently indexes your browsing history and desktop interactions into an encrypted local **SQLite 3 FTS5** index paired with dense vector embeddings generated via **FastEmbed / ONNX**.
+
+Whenever you need recall, simply summon Revia to search everything you've seen using exact keywords, fuzzy terms, or natural concepts.
+
+---
+
+## ⚡ How It Works
 
 <div align="center">
-  <img src="docs/assets/revia_mac_capsule.png" alt="Revia Floating Search Capsule" width="850" />
-  <p><em>The translucent Revia search capsule summoned over the desktop space with instant FTS5 + Semantic results.</em></p>
+  <img src="docs/assets/revia_workflow.svg" alt="How Revia Works Workflow" width="100%" />
 </div>
 
----
-
-## ✨ Why Revia?
-
-- ⚡ **Zero-Friction Summoning**: Accessible in <100ms via native double-Control (`⌃ ⌃`) tap or `Alt + Space`.
-- 🧠 **Hybrid BM25 + Vector Search**: Merges exact keyword matching (SQLite FTS5) with conceptual semantic search (`FastEmbed` / ONNX `all-MiniLM-L6-v2`).
-- 🔒 **100% On-Device & Private**: Zero cloud network calls, zero tracking scripts, zero remote LLM API dependencies. Your data never leaves your RAM and local disk.
-- 🎨 **Minimal Ambient Design**: Translucent glassmorphism silhouette floating seamlessly above active workspace windows with automated focus-loss dismissal.
-- ⚡ **Lightweight Footprint**: Built with Rust and Tauri v2 for minimal CPU & RAM consumption (<50 MB RAM idle).
+1. **Remember**: You read a paper, article, or documentation page in your browser.
+2. **Summon Revia**: Double-tap `Control` (`⌃ ⌃`) on macOS or press `Alt + Space` on Windows.
+3. **Speak or Type**: Enter a query or describe the concept in natural language.
+4. **Instant Recall**: Revia's hybrid reranker retrieves and ranks the exact page in milliseconds.
+5. **Open**: Press `Enter` to open the URL directly in your browser.
 
 ---
 
-## 🛠️ How It Works
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      BACKGROUND INGESTION                       │
-│  Monitors Chrome History & Local Memory (Every 5 Minutes)      │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                 ENCRYPTED LOCAL STORAGE (SQLITE)                │
-│  - SQLite 3 FTS5 BM25 Full-Text Search Table                    │
-│  - FastEmbed Dense Vector Embedding Store (384-dimensional)     │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      INSTANT ASSISTANT UX                       │
-│  - Press ⌃ ⌃ (Mac) or Alt+Space (Windows)                       │
-│  - Type query or use voice dictation                            │
-│  - Hybrid reranking algorithm delivers instant results          │
-│  - Press Enter to launch URL or Escape to dismiss               │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🖥️ Visual Showcase
-
-### 1. First-Run Setup & Onboarding
-Revia detects virgin state on launch and displays a centered, step-by-step onboarding carousel guiding users through permission grants, history ingestion, and global shortcuts.
+## 🎬 The Interactive Experience
 
 <div align="center">
-  <img src="docs/assets/revia_onboarding.png" alt="Revia First-Run Onboarding Modal" width="750" />
+  <img src="docs/assets/revia_demo_animated.svg" alt="Revia Interactive Desktop Demonstration" width="100%" />
+  <p><em>Live interaction model: Instant global summon, active Memory Core, and real-time FTS5 + Semantic results.</em></p>
 </div>
 
-<br />
-
-### 2. Dual-Platform Public Distribution Portal
-Our production website auto-detects visitor OS and provides instant direct access to verified release ZIPs for both Apple Silicon and Windows x64.
-
-<div align="center">
-  <img src="docs/assets/revia_website_dual.png" alt="Revia Dual-Platform Download Portal" width="750" />
-</div>
-
-<br />
-
-### 3. On-Device Local Privacy Architecture
-Revia's architecture relies exclusively on local system hooks and on-device SQLite databases.
-
-<div align="center">
-  <img src="docs/assets/revia_privacy_arch.png" alt="Revia Privacy Architecture" width="750" />
-</div>
+- **Floating Ambient Capsule**: Borderless glassmorphic interface with top-center anchoring.
+- **Dynamic Expansion**: Automatically expands from 52px idle search bar to 470px with ranked result cards as you type.
+- **Focus-Loss Dismissal**: Automatically hides when you switch tasks, keeping your workspace distraction-free.
 
 ---
 
-## 💻 Platform Matrix & Capabilities
+## 🎙️ Voice Interaction
 
-| Capability | macOS (v1.5.0 Beta) | Windows (v1.5.0 Beta) | Technical Detail |
-| :--- | :--- | :--- | :--- |
-| **Target Architecture** | Apple Silicon (`arm64`) | Windows 10/11 (`x86_64`) | Native compiled binaries |
-| **Global Shortcut** | `⌃ ⌃` (Double Control) | `Alt + Space` | Mac uses `CGEventTap`; Windows uses `tauri-plugin-global-shortcut` |
-| **Search Engine** | SQLite FTS5 BM25 | SQLite FTS5 BM25 | Native embedded SQLite 3 engine |
-| **Vector Engine** | FastEmbed ONNX | FastEmbed ONNX | 384-dim `all-MiniLM-L6-v2` dense embeddings |
-| **Voice Dictation** | Native `Speech.framework` | Stubbed (In Dev) | Mac uses Objective-C `AVFoundation` + `SFSpeechRecognizer` |
-| **History Ingestion** | Chrome SQLite History | Chrome SQLite History | Auto-converts Chrome time microsecond epoch to Unix ms |
-| **System Tray** | Menu Bar Icon | System Tray Icon | Native context menu ("Open", "Pause", "Settings", "Quit") |
-| **Auto-Hide on Blur** | Active | Active | Hides capsule after 800ms activation grace period |
-| **Package Format** | Direct `.zip` (`Revia.app`) | Direct `.zip` (`Revia.exe`) | Validated with `unzip -t` and SHA-256 checksums |
-| **Verification Status** | **VERIFIED PASS** | **PACKAGED / RUNTIME UNVERIFIED** | *Windows cross-compiled on macOS darwin-arm64 host* |
+- **macOS Native Speech Engine**: Direct integration with Apple `AVFoundation` and `Speech.framework` (`SFSpeechRecognizer`) in native Objective-C (`mac_native.m`).
+- **Real-Time Dictation**: Streaming audio buffer converts speech into instant text queries without external cloud API calls.
+- **Windows Voice**: Graceful stubbed fallback; native Windows Media capture engine scheduled for upcoming release.
 
 ---
 
-## 🔬 Search & Ranking Pipeline
+## 🔬 Search & Ranking Engine
 
-Revia combines keyword matching and semantic vector scoring into a single unified relevance score:
+<div align="center">
+  <img src="docs/assets/revia_search_pipeline.svg" alt="Revia Search and Ranking Pipeline" width="100%" />
+</div>
+
+Revia executes a hybrid ranking formula that balances exact lexical keyword matches with deep conceptual semantic similarity:
 
 $$\text{FinalScore} = 0.6 \times \text{Norm}(\text{BM25Score}) + 0.4 \times \text{CosineSimilarity}(\mathbf{v}_{\text{query}}, \mathbf{v}_{\text{document}})$$
 
-1. **FTS5 BM25**: Evaluates query term frequencies, inverse document frequency, and snippet proximity inside SQLite.
-2. **FastEmbed Vector Embeddings**: Generates 384-dimensional dense vectors using the ONNX-optimized `all-MiniLM-L6-v2` model running locally.
-3. **Stale Request Protection**: Search worker threads employ atomic query sequence tokens to discard out-of-order async responses.
+- **SQLite 3 FTS5**: BM25 keyword relevance, prefix matching, and token proximity.
+- **FastEmbed ONNX Embeddings**: 384-dimensional dense vectors using the `all-MiniLM-L6-v2` model executed on-device via ONNX Runtime.
+- **Stale Request Protection**: Atomic query sequence IDs discard out-of-order async worker responses.
 
 ---
 
-## 🔒 100% Local Privacy Architecture
+## 🔒 Privacy & 100% Local Architecture
 
-- **Zero Remote Cloud Requests**: Query inputs, indexed pages, and embeddings are never uploaded to any remote cloud API or server.
-- **Local Application Data**: SQLite databases reside strictly inside standard OS user directories:
+<div align="center">
+  <img src="docs/assets/revia_privacy_architecture.svg" alt="Revia 100% Local Privacy Architecture" width="100%" />
+</div>
+
+- **Zero Cloud Network Calls**: Your search queries, browsing history, and embeddings never leave your computer.
+- **Local Application Data**: Encrypted SQLite database stored strictly inside standard OS user directories:
   - macOS: `~/Library/Application Support/com.revia.app/revia_memory.db`
   - Windows: `%APPDATA%\com.revia.app\revia_memory.db`
-- **Zero Telemetry**: No analytics engines, tracking pixels, or third-party error monitoring beacons.
+- **Zero Telemetry**: No tracking pixels, analytics scripts, or remote logging beacons.
+
+---
+
+## 💻 Platform Matrix & Status
+
+| Platform | Target Architecture | Shortcut | Status | Verification Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **macOS** | Apple Silicon (`arm64` / `aarch64`) | `⌃ ⌃` (Double Control) | **v1.5.0 Beta** | **VERIFIED PASS** (Physically verified on macOS) |
+| **Windows** | Windows 10 / 11 (`x86_64`) | `Alt + Space` | **x64 Beta** | **PACKAGED / RUNTIME UNVERIFIED** *(Host is darwin-arm64)* |
 
 ---
 
 ## 🧰 Technology Stack
 
-- **Backend**: Rust 1.98.0
+- **System Core**: Rust 1.98.0
 - **App Framework**: Tauri v2 (`2.11.x`)
 - **Frontend**: React 18, TypeScript 5, Vite 8
 - **Database**: SQLite 3 (`rusqlite`) with FTS5 BM25 extension
-- **Embeddings**: `fastembed` 6.0 (ONNX Runtime)
-- **macOS Native Layer**: Objective-C (`mac_native.m`), `AVFoundation`, `Speech.framework`, `CoreGraphics`
-- **Windows Cross-Compiler**: `cargo-xwin`, LLVM/Clang 23, `lld-link`, Microsoft MSVC CRT/SDK
-- **Hosting**: Cloudflare Pages (`revia-3v8.pages.dev`)
+- **Vector Embeddings**: `fastembed` 6.0 (`all-MiniLM-L6-v2` via ONNX Runtime)
+- **macOS Bridge**: Objective-C (`mac_native.m`), `AVFoundation`, `Speech.framework`, `CoreGraphics`
+- **Windows Cross-Toolchain**: `cargo-xwin`, LLVM/Clang 23, `lld-link`, MSVC CRT/SDK
+- **Web Infrastructure**: Cloudflare Pages (`revia-3v8.pages.dev`)
 
 ---
 
 ## 📦 Official Release Binaries & Verification
 
-All official release artifacts are hosted directly on our global edge network and verified with SHA-256 checksums.
+All official release artifacts are hosted directly on our global edge network and verified with SHA-256 checksums:
 
-| Release Package | Target | Size | SHA-256 Checksum | Download Link |
+| Release Package | Target Platform | File Size | SHA-256 Checksum | Download Link |
 | :--- | :--- | :--- | :--- | :--- |
-| **`Revia_1.5.0_aarch64.zip`** | macOS (`arm64`) | 14.1 MB | `5d193b00d72632c9627f1226d16429fe1378b18958483c34cc437d1e39a87914` | [**Download Mac ZIP**](https://revia-3v8.pages.dev/downloads/Revia_1.5.0_aarch64.zip) |
-| **`Revia_Windows_x64.zip`** | Windows (`x64`) | 12.6 MB | `5819bda1a2fc9da3bef50a9ccd83dd5628a177fa5eb7be51e9f68e994af7490d` | [**Download Windows ZIP**](https://revia-3v8.pages.dev/downloads/Revia_Windows_x64.zip) |
+| **`Revia_1.5.0_aarch64.zip`** | macOS (Apple Silicon) | 14.1 MB | `5d193b00d72632c9627f1226d16429fe1378b18958483c34cc437d1e39a87914` | [**Download Mac ZIP**](https://revia-3v8.pages.dev/downloads/Revia_1.5.0_aarch64.zip) |
+| **`Revia_Windows_x64.zip`** | Windows 10/11 (x64) | 12.6 MB | `5819bda1a2fc9da3bef50a9ccd83dd5628a177fa5eb7be51e9f68e994af7490d` | [**Download Windows ZIP**](https://revia-3v8.pages.dev/downloads/Revia_Windows_x64.zip) |
 
 ---
 
 ## 🚀 Installation & Security Guidance
 
 ### macOS First Launch (Gatekeeper Note)
-Because Revia is an open beta distributed outside the Mac App Store, macOS Gatekeeper may present an "unidentified developer" prompt on first launch:
+Because this beta release is distributed directly outside the Mac App Store, macOS Gatekeeper may present an "unidentified developer" prompt on first launch:
 1. Open **System Settings → Privacy & Security**.
 2. Scroll to the message regarding Revia and click **Open Anyway**.
 3. (Alternatively: Right-click **Revia.app** in Finder, select **Open**, and click **Open**).
@@ -194,19 +164,33 @@ As an unsigned open beta release, Windows Defender SmartScreen may display an in
 
 ---
 
-## 🧪 Beta Testing & Bug Reporting
+## 🧪 Beta Testing & Feedback
 
-We actively encourage feedback from our public beta testers!
-- Please refer to our [**Beta Testing Guide**](REVIA_BETA_TESTING_GUIDE.md) for detailed test scenarios.
-- Review our [**Master Technical Specification**](REVIA_MASTER_TECHNICAL_DOCUMENT.md) for architecture deep-dives.
-- Review the [**v1.5.0 Release Notes**](REVIA_V1.5.0_BETA_RELEASE_NOTES.md) for detailed changelogs.
+We welcome tester feedback!
+- Read our [**Beta Testing Guide**](REVIA_BETA_TESTING_GUIDE.md) for step-by-step test scenarios and bug reporting templates.
+- Read our [**Master Technical Document**](REVIA_MASTER_TECHNICAL_DOCUMENT.md) for comprehensive architectural specifications.
+- Read the [**v1.5.0 Release Notes**](REVIA_V1.5.0_BETA_RELEASE_NOTES.md) for version changelogs.
+
+---
+
+## 🗺️ Roadmap
+
+- [x] **v1.5.0**: Cross-platform macOS (Apple Silicon) and Windows (x64) releases.
+- [x] **v1.5.0**: Hybrid SQLite FTS5 BM25 + FastEmbed ONNX dense vector search.
+- [x] **v1.5.0**: Translucent floating ambient capsule UI with auto-focus dismissal.
+- [x] **v1.5.0**: Native double-tap Control (`⌃ ⌃`) listener and Apple Speech dictation.
+- [x] **v1.5.0**: Public web portal deployment on Cloudflare Pages.
+- [ ] **v1.6.0**: Native Windows Media speech recognition engine integration.
+- [ ] **v1.6.0**: Automated background ingestion for Microsoft Edge & Mozilla Firefox.
+- [ ] **v1.7.0**: Apple Developer ID Notarization & Windows EV Code Signing.
+- [ ] **v1.8.0**: Windows ARM64 (Copilot+ PC) native build.
 
 ---
 
 ## ⚠️ Known Limitations
 
 1. **Windows Native Voice**: Speech dictation on Windows is currently stubbed (text search and global shortcuts are fully functional).
-2. **Windows Physical Testing**: Cross-compilation was executed on macOS ARM64 host; physical Windows runtime testing is ongoing.
+2. **Windows Physical Testing**: Cross-compilation was executed on a macOS ARM64 host; physical Windows runtime testing is ongoing.
 3. **Apple Notarization**: App bundle is ad-hoc signed; requires standard first-time Gatekeeper approval.
 
 ---

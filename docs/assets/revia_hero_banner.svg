@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradients -->
+    <radialGradient id="bgGlow" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#1e1838" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#0e1017" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#08090d" stop-opacity="1"/>
+    </radialGradient>
+
+    <!-- Orb Core Gradient -->
+    <radialGradient id="coreOrb" cx="40%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="25%" stop-color="#c084fc"/>
+      <stop offset="60%" stop-color="#7c3aed"/>
+      <stop offset="90%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </radialGradient>
+
+    <!-- Ring Gradients -->
+    <linearGradient id="ringGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.2"/>
+    </linearGradient>
+
+    <linearGradient id="ringGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#c084fc" stop-opacity="0.1"/>
+    </linearGradient>
+
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="subtleGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <style>
+    .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 800; font-size: 54px; fill: #ffffff; letter-spacing: 0.08em; }
+    .tagline { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 400; font-size: 22px; fill: #cbd5e1; letter-spacing: -0.01em; }
+    .subtext { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 500; font-size: 14px; fill: #94a3b8; }
+    .badge-text { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; font-weight: 700; fill: #a855f7; letter-spacing: 0.08em; }
+  </style>
+
+  <!-- Background Base -->
+  <rect width="1200" height="420" rx="16" fill="url(#bgGlow)"/>
+  <rect width="1200" height="420" rx="16" fill="none" stroke="#2e3547" stroke-width="1.5"/>
+
+  <!-- Subtle Ambient Grid Lines -->
+  <g opacity="0.12" stroke="#64748b" stroke-width="0.8">
+    <line x1="0" y1="70" x2="1200" y2="70" />
+    <line x1="0" y1="140" x2="1200" y2="140" />
+    <line x1="0" y1="210" x2="1200" y2="210" />
+    <line x1="0" y1="280" x2="1200" y2="280" />
+    <line x1="0" y1="350" x2="1200" y2="350" />
+    <line x1="200" y1="0" x2="200" y2="420" />
+    <line x1="400" y1="0" x2="400" y2="420" />
+    <line x1="600" y1="0" x2="600" y2="420" />
+    <line x1="800" y1="0" x2="800" y2="420" />
+    <line x1="1000" y1="0" x2="1000" y2="420" />
+  </g>
+
+  <!-- Left Column: Branding & Tagline -->
+  <g transform="translate(80, 85)">
+    <!-- Pill Badge -->
+    <rect x="0" y="0" width="220" height="28" rx="14" fill="#1e1b4b" stroke="#7c3aed" stroke-width="1" />
+    <circle cx="14" cy="14" r="4" fill="#a855f7" filter="url(#subtleGlow)" />
+    <text x="28" y="18" class="badge-text">ON-DEVICE MEMORY CORE</text>
+
+    <!-- Logo & Title -->
+    <text x="0" y="90" class="title">REVIA</text>
+
+    <!-- Tagline & Description -->
+    <text x="0" y="138" class="tagline">Your computer remembers, so you don’t have to.</text>
+    <text x="0" y="174" class="subtext">An ambient, privacy-first desktop memory assistant for macOS &amp; Windows.</text>
+    <text x="0" y="198" class="subtext">Locally indexed SQLite FTS5 · FastEmbed ONNX · Zero Cloud Dependencies</text>
+
+    <!-- Status Badges -->
+    <g transform="translate(0, 235)">
+      <!-- Mac Badge -->
+      <rect x="0" y="0" width="160" height="34" rx="8" fill="#181e29" stroke="#334155" stroke-width="1" />
+      <text x="14" y="21" font-family="-apple-system, sans-serif" font-size="12" font-weight="700" fill="#f8fafc"> macOS v1.5.0</text>
+      <text x="105" y="21" font-family="-apple-system, sans-serif" font-size="11" font-weight="500" fill="#38bdf8">Apple Silicon</text>
+
+      <!-- Windows Badge -->
+      <rect x="175" y="0" width="165" height="34" rx="8" fill="#181e29" stroke="#334155" stroke-width="1" />
+      <text x="189" y="21" font-family="-apple-system, sans-serif" font-size="12" font-weight="700" fill="#f8fafc">⊞ Windows x64</text>
+      <text x="290" y="21" font-family="-apple-system, sans-serif" font-size="11" font-weight="500" fill="#a855f7">Beta Release</text>
+
+      <!-- Privacy Badge -->
+      <rect x="355" y="0" width="135" height="34" rx="8" fill="#062d1f" stroke="#059669" stroke-width="1" />
+      <text x="369" y="21" font-family="-apple-system, sans-serif" font-size="12" font-weight="700" fill="#34d399">🔒 100% On-Device</text>
+    </g>
+  </g>
+
+  <!-- Right Column: Glowing Holographic Memory Core -->
+  <g transform="translate(940, 210)">
+    <!-- Outer Glow Ambient Aura -->
+    <circle cx="0" cy="0" r="140" fill="#8b5cf6" opacity="0.12" filter="url(#glow)"/>
+    <circle cx="0" cy="0" r="100" fill="#38bdf8" opacity="0.15" filter="url(#glow)"/>
+
+    <!-- Orbital Ring 1 -->
+    <ellipse cx="0" cy="0" rx="130" ry="46" fill="none" stroke="url(#ringGrad1)" stroke-width="1.8" transform="rotate(-25)" stroke-dasharray="8 6"/>
+    <!-- Orbital Node 1 -->
+    <circle cx="118" cy="-50" r="4.5" fill="#38bdf8" filter="url(#subtleGlow)"/>
+
+    <!-- Orbital Ring 2 -->
+    <ellipse cx="0" cy="0" rx="120" ry="42" fill="none" stroke="url(#ringGrad2)" stroke-width="1.8" transform="rotate(35)" stroke-dasharray="6 4"/>
+    <!-- Orbital Node 2 -->
+    <circle cx="-98" cy="65" r="4.5" fill="#c084fc" filter="url(#subtleGlow)"/>
+
+    <!-- Central Glowing Nucleus -->
+    <circle cx="0" cy="0" r="54" fill="url(#coreOrb)" filter="url(#subtleGlow)"/>
+    
+    <!-- Central Highlight Pulse -->
+    <circle cx="-14" cy="-14" r="22" fill="#ffffff" opacity="0.45" filter="url(#subtleGlow)"/>
+
+    <!-- Geometric Coordinate Marks -->
+    <g stroke="#94a3b8" stroke-width="0.8" opacity="0.6">
+      <line x1="-70" y1="0" x2="-58" y2="0" />
+      <line x1="58" y1="0" x2="70" y2="0" />
+      <line x1="0" y1="-70" x2="0" y2="-58" />
+      <line x1="0" y1="58" x2="0" y2="70" />
+    </g>
+  </g>
+</svg>
