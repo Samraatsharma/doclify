@@ -17,37 +17,155 @@ impl ChromeHistorySource {
         Self
     }
 
+    /// Returns Chrome (and Chromium) history file paths for the current platform.
     pub fn get_chrome_history_paths() -> Vec<PathBuf> {
         let mut paths = Vec::new();
-        if let Some(home_dir) = dirs::home_dir() {
-            let chrome_base = home_dir
-                .join("Library")
-                .join("Application Support")
-                .join("Google")
-                .join("Chrome");
 
-            let default_history = chrome_base.join("Default").join("History");
-            if default_history.exists() {
-                paths.push(default_history);
+        #[cfg(target_os = "macos")]
+        {
+            if let Some(home_dir) = dirs::home_dir() {
+                let chrome_base = home_dir
+                    .join("Library")
+                    .join("Application Support")
+                    .join("Google")
+                    .join("Chrome");
+                Self::collect_chromium_profiles(&chrome_base, &mut paths);
             }
+        }
 
-            if let Ok(entries) = fs::read_dir(&chrome_base) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.is_dir() {
-                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                            if name.starts_with("Profile ") {
-                                let prof_history = path.join("History");
-                                if prof_history.exists() {
-                                    paths.push(prof_history);
-                                }
+        #[cfg(target_os = "windows")]
+        {
+            // Chrome: %LOCALAPPDATA%\Google\Chrome\User Data
+            if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
+                let chrome_base = PathBuf::from(local_app_data)
+                    .join("Google")
+                    .join("Chrome")
+                    .join("User Data");
+                Self::collect_chromium_profiles(&chrome_base, &mut paths);
+            }
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            if let Some(home_dir) = dirs::home_dir() {
+                let chrome_base = home_dir.join(".config").join("google-chrome");
+                Self::collect_chromium_profiles(&chrome_base, &mut paths);
+            }
+        }
+
+        paths
+    }
+
+    /// Collect Chromium-family History files from a base User Data directory.
+    fn collect_chromium_profiles(base: &PathBuf, paths: &mut Vec<PathBuf>) {
+        if !base.exists() {
+            return;
+        }
+        // Default profile
+        let default_history = base.join("Default").join("History");
+        if default_history.exists() {
+            paths.push(default_history);
+        }
+        // Profile N profiles
+        if let Ok(entries) = fs::read_dir(base) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        if name.starts_with("Profile ") {
+                            let prof_history = path.join("History");
+                            if prof_history.exists() {
+                                paths.push(prof_history);
                             }
                         }
                     }
                 }
             }
         }
-        paths
+    }
+
+    /// Returns all browser history paths across Chrome, Edge, and Firefox.
+    /// Label: "chrome" | "edge" | "firefox"
+    pub fn get_all_browser_history_paths() -> Vec<(String, PathBuf)> {
+        let mut results: Vec<(String, PathBuf)> = Vec::new();
+
+        // --- Chrome ---
+        for p in Self::get_chrome_history_paths() {
+            results.push(("chrome".to_string(), p));
+        }
+
+        // --- Microsoft Edge (Chromium-based) ---
+        #[cfg(target_os = "macos")]
+        {
+            if let Some(home_dir) = dirs::home_dir() {
+                let edge_base = home_dir
+                    .join("Library")
+                    .join("Application Support")
+                    .join("Microsoft Edge");
+                let mut edge_paths = Vec::new();
+                Self::collect_chromium_profiles(&edge_base, &mut edge_paths);
+                for p in edge_paths {
+                    results.push(("edge".to_string(), p));
+                }
+            }
+        }
+        #[cfg(target_os = "windows")]
+        {
+            if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
+                let edge_base = PathBuf::from(local_app_data)
+                    .join("Microsoft")
+                    .join("Edge")
+                    .join("User Data");
+                let mut edge_paths = Vec::new();
+                Self::collect_chromium_profiles(&edge_base, &mut edge_paths);
+                for p in edge_paths {
+                    results.push(("edge".to_string(), p));
+                }
+            }
+        }
+
+        // --- Firefox (places.sqlite) ---
+        #[cfg(target_os = "macos")]
+        {
+            if let Some(home_dir) = dirs::home_dir() {
+                let ff_base = home_dir
+                    .join("Library")
+                    .join("Application Support")
+                    .join("Firefox")
+                    .join("Profiles");
+                if ff_base.exists() {
+                    if let Ok(entries) = fs::read_dir(&ff_base) {
+                        for entry in entries.flatten() {
+                            let places = entry.path().join("places.sqlite");
+                            if places.exists() {
+                                results.push(("firefox".to_string(), places));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        #[cfg(target_os = "windows")]
+        {
+            if let Some(app_data) = std::env::var_os("APPDATA") {
+                let ff_base = PathBuf::from(app_data)
+                    .join("Mozilla")
+                    .join("Firefox")
+                    .join("Profiles");
+                if ff_base.exists() {
+                    if let Ok(entries) = fs::read_dir(&ff_base) {
+                        for entry in entries.flatten() {
+                            let places = entry.path().join("places.sqlite");
+                            if places.exists() {
+                                results.push(("firefox".to_string(), places));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        results
     }
 
     pub fn chrome_time_to_unix_millis(chrome_micros: i64) -> i64 {
@@ -70,6 +188,35 @@ impl ChromeHistorySource {
         let mut hasher = Sha256::new();
         hasher.update(url.as_bytes());
         format!("chrome_{}", hex::encode(hasher.finalize()))
+    }
+
+    /// Expected Chrome history path for error messages on the current platform.
+    fn expected_path_string() -> String {
+        #[cfg(target_os = "macos")]
+        {
+            dirs::home_dir()
+                .map(|h| {
+                    h.join("Library/Application Support/Google/Chrome/Default/History")
+                        .to_string_lossy()
+                        .to_string()
+                })
+                .unwrap_or_default()
+        }
+        #[cfg(target_os = "windows")]
+        {
+            std::env::var("LOCALAPPDATA")
+                .map(|p| {
+                    format!(
+                        r"{}\Google\Chrome\User Data\Default\History",
+                        p
+                    )
+                })
+                .unwrap_or_else(|_| r"%LOCALAPPDATA%\Google\Chrome\User Data\Default\History".to_string())
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+        {
+            "~/.config/google-chrome/Default/History".to_string()
+        }
     }
 }
 
@@ -95,20 +242,20 @@ impl MemorySourceTrait for ChromeHistorySource {
     fn check_access(&self) -> ChromeAccessStatus {
         let paths = Self::get_chrome_history_paths();
         if paths.is_empty() {
-            let expected = dirs::home_dir()
-                .map(|h| h.join("Library/Application Support/Google/Chrome/Default/History").to_string_lossy().to_string())
-                .unwrap_or_default();
             return ChromeAccessStatus {
                 accessible: false,
-                path: expected,
+                path: Self::expected_path_string(),
                 exists: false,
                 item_count: None,
-                error_message: Some("Google Chrome history file not found. Chrome may not be installed or hasn't created history yet.".to_string()),
+                error_message: Some(
+                    "Google Chrome history file not found. Chrome may not be installed or hasn't created history yet.".to_string(),
+                ),
             };
         }
 
         let primary_path = &paths[0];
-        let temp_path = std::env::temp_dir().join(format!("revia_chrome_check_{}.db", std::process::id()));
+        let temp_path = std::env::temp_dir()
+            .join(format!("revia_chrome_check_{}.db", std::process::id()));
 
         // Try safe copy and read
         if let Err(e) = fs::copy(primary_path, &temp_path) {
@@ -117,14 +264,19 @@ impl MemorySourceTrait for ChromeHistorySource {
                 path: primary_path.to_string_lossy().to_string(),
                 exists: true,
                 item_count: None,
-                error_message: Some(format!("Permission denied reading Chrome history: {}. macOS Full Disk Access may be needed.", e)),
+                error_message: Some(format!(
+                    "Permission denied reading Chrome history: {}. Full Disk Access may be needed.",
+                    e
+                )),
             };
         }
 
         let result = (|| -> Result<i64, String> {
-            let conn = Connection::open_with_flags(&temp_path, OpenFlags::SQLITE_OPEN_READ_ONLY)
-                .map_err(|e| format!("Failed to open copied database: {}", e))?;
-            let count: i64 = conn.query_row("SELECT COUNT(*) FROM urls", [], |row| row.get(0))
+            let conn =
+                Connection::open_with_flags(&temp_path, OpenFlags::SQLITE_OPEN_READ_ONLY)
+                    .map_err(|e| format!("Failed to open copied database: {}", e))?;
+            let count: i64 = conn
+                .query_row("SELECT COUNT(*) FROM urls", [], |row| row.get(0))
                 .map_err(|e| format!("Failed to query urls: {}", e))?;
             Ok(count)
         })();
@@ -168,7 +320,11 @@ impl MemorySourceTrait for ChromeHistorySource {
         let mut max_visit_time_seen = marker_unix_ms;
 
         for history_path in paths {
-            let temp_id = format!("revia_chrome_ingest_{}_{}", std::process::id(), start_time.elapsed().as_micros());
+            let temp_id = format!(
+                "revia_chrome_ingest_{}_{}",
+                std::process::id(),
+                start_time.elapsed().as_micros()
+            );
             let temp_path = std::env::temp_dir().join(format!("{}.db", temp_id));
 
             if let Err(e) = fs::copy(&history_path, &temp_path) {
@@ -177,17 +333,21 @@ impl MemorySourceTrait for ChromeHistorySource {
             }
 
             let result = (|| -> Result<(usize, usize, i64), String> {
-                let conn = Connection::open_with_flags(&temp_path, OpenFlags::SQLITE_OPEN_READ_ONLY)
-                    .map_err(|e| format!("Failed to open temp DB: {}", e))?;
+                let conn =
+                    Connection::open_with_flags(&temp_path, OpenFlags::SQLITE_OPEN_READ_ONLY)
+                        .map_err(|e| format!("Failed to open temp DB: {}", e))?;
 
-                let mut stmt = conn.prepare(
-                    "SELECT u.id, u.url, u.title, u.visit_count, u.last_visit_time
-                     FROM urls u
-                     WHERE u.last_visit_time > ?1
-                     ORDER BY u.last_visit_time ASC"
-                ).map_err(|e| format!("Prepare query failed: {}", e))?;
+                let mut stmt = conn
+                    .prepare(
+                        "SELECT u.id, u.url, u.title, u.visit_count, u.last_visit_time
+                         FROM urls u
+                         WHERE u.last_visit_time > ?1
+                         ORDER BY u.last_visit_time ASC",
+                    )
+                    .map_err(|e| format!("Prepare query failed: {}", e))?;
 
-                let mut rows = stmt.query(params![marker_chrome_time])
+                let mut rows = stmt
+                    .query(params![marker_chrome_time])
                     .map_err(|e| format!("Query failed: {}", e))?;
 
                 let mut items = Vec::new();
@@ -299,9 +459,11 @@ impl MemorySourceTrait for ChromeHistorySource {
             total_items_indexed,
             "success",
             None,
-        ).map_err(|e| format!("Failed to update ingestion state: {}", e))?;
+        )
+        .map_err(|e| format!("Failed to update ingestion state: {}", e))?;
 
-        let stats = db.get_memory_stats(false)
+        let stats = db
+            .get_memory_stats(false)
             .map_err(|e| format!("Failed to get stats: {}", e))?;
 
         Ok(IngestionStats {
@@ -320,7 +482,7 @@ mod tests {
 
     #[test]
     fn test_chrome_time_conversion_roundtrip() {
-        let original_unix_ms = 1_700_000_000_000i64; // arbitrary unix ms
+        let original_unix_ms = 1_700_000_000_000i64;
         let chrome_time = ChromeHistorySource::unix_millis_to_chrome_time(original_unix_ms);
         let converted_back = ChromeHistorySource::chrome_time_to_unix_millis(chrome_time);
         assert_eq!(original_unix_ms, converted_back);
@@ -341,26 +503,63 @@ mod tests {
         let source = ChromeHistorySource::new();
         let access = source.check_access();
         if access.accessible {
-            let temp_db_path = std::env::temp_dir().join(format!("revia_chrome_ingest_test_{}.db", std::process::id()));
+            let temp_db_path = std::env::temp_dir().join(format!(
+                "revia_chrome_ingest_test_{}.db",
+                std::process::id()
+            ));
             let _ = fs::remove_file(&temp_db_path);
 
             let db = Database::new(&temp_db_path).expect("Failed to create test DB");
             let stats = source.ingest(&db, true).expect("Ingestion failed");
 
-            assert!(stats.total_stored_items > 0, "Should have indexed real history items");
-            println!("Successfully indexed {} items from Chrome in {}ms", stats.total_stored_items, stats.duration_ms);
+            assert!(
+                stats.total_stored_items > 0,
+                "Should have indexed real history items"
+            );
+            println!(
+                "Successfully indexed {} items from Chrome in {}ms",
+                stats.total_stored_items, stats.duration_ms
+            );
 
-            let search_results = crate::search::search(&db, "instagram", 5).expect("Search failed");
+            let semantic_engine = crate::search::semantic::SemanticEngine::new();
+            let search_results =
+                crate::search::search(&db, &semantic_engine, "instagram", 5)
+                    .expect("Search failed");
             assert!(!search_results.is_empty(), "Search should return items");
-            println!("Found {} results for 'instagram': first result is '{}' ({})", search_results.len(), search_results[0].title, search_results[0].url);
+            println!(
+                "Found {} results for 'instagram': first result is '{}' ({})",
+                search_results.len(),
+                search_results[0].title,
+                search_results[0].url
+            );
 
-            let empty_query_results = crate::search::search(&db, "", 5).expect("Empty search failed");
-            assert!(!empty_query_results.is_empty(), "Empty search should return recent items");
+            let empty_query_results =
+                crate::search::search(&db, &semantic_engine, "", 5).expect("Empty search failed");
+            assert!(
+                !empty_query_results.is_empty(),
+                "Empty search should return recent items"
+            );
             println!("Found {} recent items", empty_query_results.len());
 
             let _ = fs::remove_file(&temp_db_path);
         } else {
-            println!("Chrome history not accessible in test environment (access: {:?})", access);
+            println!(
+                "Chrome history not accessible in test environment (access: {:?})",
+                access
+            );
+        }
+    }
+
+    #[test]
+    fn test_populate_canonical_db() {
+        let default_path = Database::default_path();
+        if let Ok(db) = Database::new(&default_path) {
+            let source = ChromeHistorySource::new();
+            if source.check_access().accessible {
+                let _ = source.ingest(&db, false);
+                let stats = db.get_memory_stats(false).unwrap();
+                println!("Canonical DB populated: {} items", stats.total_items);
+            }
         }
     }
 }

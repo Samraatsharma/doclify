@@ -1,88 +1,134 @@
 :root {
-  /* Futuristic Color Tokens - Dark Mode Default */
+  /* =========================================================================
+     REVIA DESIGN SYSTEM — OBSIDIAN GLASS (DARK MODE DEFAULT)
+     ========================================================================= */
   --bg-app: transparent;
-  --assistant-bg: rgba(18, 20, 28, 0.85);
-  --assistant-border: rgba(255, 255, 255, 0.12);
-  --assistant-shadow: 0 18px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 24px rgba(99, 102, 241, 0.18);
   
-  --bg-card: rgba(25, 28, 38, 0.75);
-  --bg-card-hover: rgba(35, 40, 56, 0.7);
-  --bg-card-selected: rgba(59, 130, 246, 0.18);
-  --border-selected: rgba(59, 130, 246, 0.55);
-  --bg-input: rgba(10, 12, 18, 0.5);
-  --bg-pill: rgba(255, 255, 255, 0.07);
-  
-  --border-app: rgba(255, 255, 255, 0.1);
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  
-  --text-primary: #f3f4f6;
-  --text-secondary: #9ca3af;
-  --text-tertiary: #6b7280;
-  
+  /* Primary Glass Surface */
+  --assistant-bg: rgba(11, 14, 26, 0.82);
+  --assistant-border: rgba(255, 255, 255, 0.15);
+  --assistant-bevel: inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 1px 0 rgba(0, 0, 0, 0.5);
+  --assistant-shadow: 
+    0 24px 64px -12px rgba(0, 0, 0, 0.85),
+    0 8px 24px -4px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 0 40px -4px rgba(99, 102, 241, 0.22);
+
+  /* Card Surfaces */
+  --bg-card: rgba(20, 25, 44, 0.65);
+  --bg-card-hover: rgba(30, 38, 68, 0.78);
+  --bg-card-selected: rgba(59, 130, 246, 0.24);
+  --border-selected: rgba(99, 102, 241, 0.75);
+  --selected-glow: 0 0 20px rgba(99, 102, 241, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+
+  /* Micro-elements */
+  --bg-input: rgba(6, 8, 16, 0.55);
+  --bg-pill: rgba(255, 255, 255, 0.08);
+  --bg-pill-hover: rgba(255, 255, 255, 0.14);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+
+  /* Typography */
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+
+  /* Accent & State */
   --accent: #3b82f6;
-  --accent-subtle: rgba(59, 130, 246, 0.15);
+  --accent-glow: #6366f1;
+  --accent-subtle: rgba(59, 130, 246, 0.2);
   --success: #10b981;
+  --success-glow: rgba(16, 185, 129, 0.4);
   --warning: #f59e0b;
   --danger: #ef4444;
 
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Plus Jakarta Sans", "Inter", sans-serif;
-  --font-mono: "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
 }
 
 @media (prefers-color-scheme: light) {
   :root {
-    --assistant-bg: rgba(255, 255, 255, 0.86);
-    --assistant-border: rgba(0, 0, 0, 0.1);
-    --assistant-shadow: 0 18px 48px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06), 0 0 20px rgba(59, 130, 246, 0.12);
-    
-    --bg-card: rgba(245, 247, 250, 0.85);
-    --bg-card-hover: rgba(238, 242, 248, 0.85);
-    --bg-card-selected: rgba(59, 130, 246, 0.12);
-    --border-selected: rgba(59, 130, 246, 0.45);
-    --bg-input: rgba(240, 242, 246, 0.7);
-    --bg-pill: rgba(0, 0, 0, 0.05);
-    
-    --border-app: rgba(0, 0, 0, 0.08);
-    --border-subtle: rgba(0, 0, 0, 0.06);
-    
-    --text-primary: #111827;
-    --text-secondary: #4b5563;
-    --text-tertiary: #9ca3af;
-    
+    /* =======================================================================
+       REVIA DESIGN SYSTEM — ARCTIC CRYSTAL GLASS (LIGHT MODE)
+       (Distinctive frosted ice — NEVER plain flat white)
+       ======================================================================= */
+    --assistant-bg: rgba(235, 242, 255, 0.84);
+    --assistant-border: rgba(99, 102, 241, 0.22);
+    --assistant-bevel: inset 0 1px 2px 0 rgba(255, 255, 255, 0.98), inset 0 -1px 1px 0 rgba(99, 102, 241, 0.12);
+    --assistant-shadow: 
+      0 20px 60px -10px rgba(15, 23, 42, 0.26),
+      0 6px 18px -2px rgba(99, 102, 241, 0.16),
+      0 0 0 1px rgba(99, 102, 241, 0.18),
+      0 0 36px -4px rgba(99, 102, 241, 0.18);
+
+    --bg-card: rgba(246, 249, 255, 0.75);
+    --bg-card-hover: rgba(235, 242, 255, 0.9);
+    --bg-card-selected: rgba(59, 130, 246, 0.18);
+    --border-selected: rgba(59, 130, 246, 0.7);
+    --selected-glow: 0 0 18px rgba(59, 130, 246, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+
+    --bg-input: rgba(245, 248, 255, 0.78);
+    --bg-pill: rgba(0, 0, 0, 0.06);
+    --bg-pill-hover: rgba(0, 0, 0, 0.1);
+    --border-subtle: rgba(99, 102, 241, 0.14);
+
+    --text-primary: #090d16;
+    --text-secondary: #334155;
+    --text-tertiary: #64748b;
+
     --accent: #2563eb;
-    --accent-subtle: rgba(37, 99, 235, 0.1);
+    --accent-glow: #4f46e5;
+    --accent-subtle: rgba(37, 99, 235, 0.14);
   }
 }
 
+/* =========================================================================
+   GLOBAL RESET & WINDOW TRANSPARENCY
+   ========================================================================= */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-html, body, #root {
+html, body {
   width: 100%;
   height: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
   background: transparent !important;
-  overflow: hidden;
+  overflow: hidden !important;
   font-family: var(--font-sans);
   color: var(--text-primary);
+  user-select: none;
 }
 
-/* Draggable titlebar regions */
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* macOS Window Drag Regions */
 .titlebar-drag {
   -webkit-app-region: drag;
 }
 
-.no-drag, input, button, a {
+.no-drag, input, button, a, select {
   -webkit-app-region: no-drag;
 }
 
-/* Custom Slim Scrollbars */
+/* Smooth Modern Scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -90,15 +136,59 @@ html, body, #root {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(150, 150, 150, 0.25);
+  background: rgba(140, 150, 190, 0.3);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(150, 150, 150, 0.45);
+  background: rgba(140, 150, 190, 0.55);
 }
 
-/* Micro animations */
+input:focus {
+  outline: none;
+}
+
+/* =========================================================================
+   KEYFRAME ANIMATIONS — REVIA CHOREOGRAPHY
+   ========================================================================= */
+@keyframes reviaMaterialize {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes reviaDematerialize {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+    filter: blur(6px);
+  }
+}
+
+@keyframes plasmaShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -108,7 +198,10 @@ html, body, #root {
   animation: spin 1s linear infinite;
 }
 
-/* Input outline reset */
-input:focus {
-  outline: none;
+.animate-materialize {
+  animation: reviaMaterialize 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-dematerialize {
+  animation: reviaDematerialize 0.18s cubic-bezier(0.4, 0, 1, 1) forwards;
 }

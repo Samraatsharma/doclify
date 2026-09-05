@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://revia.app/sitemap.xml

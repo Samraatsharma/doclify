@@ -122,6 +122,7 @@ impl Database {
         conn.execute_batch(
             "DELETE FROM memory_visits;
              DELETE FROM memory_items;
+             DELETE FROM memory_embeddings;
              DELETE FROM ingestion_state;
              UPDATE memory_sources SET last_ingested_at = NULL;
              -- Clear FTS5 virtual table
@@ -130,6 +131,49 @@ impl Database {
         )?;
         Ok(())
     }
+
+    pub fn get_item_by_id(&self, id: &str) -> Result<Option<MemoryItem>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, source_id, url, title, domain, path, visit_count,
+                    last_visit_time, first_visit_time, metadata_json, created_at, updated_at
+             FROM memory_items WHERE id = ?1"
+        )?;
+        let mut rows = stmt.query_map(params![id], |row| {
+            let meta_str: Option<String> = row.get(9)?;
+            let metadata = meta_str.and_then(|s| serde_json::from_str(&s).ok());
+            Ok(MemoryItem {
+                id: row.get(0)?,
+                source_id: row.get(1)?,
+                url: row.get(2)?,
+                title: row.get(3)?,
+                domain: row.get(4)?,
+                path: row.get(5)?,
+                visit_count: row.get(6)?,
+                last_visit_time: row.get(7)?,
+                first_visit_time: row.get(8)?,
+                relative_time: None,
+                metadata,
+                created_at: row.get(10)?,
+                updated_at: row.get(11)?,
+            })
+        })?;
+
+        if let Some(res) = rows.next() {
+            Ok(Some(res?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn with_conn<F, R>(&self, f: F) -> Result<R>
+    where
+        F: FnOnce(&Connection) -> Result<R>,
+    {
+        let conn = self.conn.lock().unwrap();
+        f(&conn)
+    }
+
 
     pub fn get_setting(&self, key: &str) -> Result<Option<String>> {
         let conn = self.conn.lock().unwrap();
@@ -315,8 +359,59 @@ impl Database {
     ) -> Result<Vec<MemoryItem>> {
         let conn = self.conn.lock().unwrap();
 
+        // When no keywords, return recent items using the ALREADY HELD conn lock.
+        // CRITICAL: Do NOT call self.get_recent_items() here — that method also
+        // tries to acquire self.conn.lock(), causing a Mutex deadlock / crash.
         if keywords.is_empty() {
-            return self.get_recent_items(limit);
+            let mut time_filter = String::new();
+            let mut time_params: Vec<rusqlite::types::Value> = Vec::new();
+            if let Some(st) = start_time {
+                time_filter.push_str(" WHERE last_visit_time >= ?");
+                time_params.push(st.into());
+            }
+            if let Some(et) = end_time {
+                if time_filter.is_empty() {
+                    time_filter.push_str(" WHERE last_visit_time <= ?");
+                } else {
+                    time_filter.push_str(" AND last_visit_time <= ?");
+                }
+                time_params.push(et.into());
+            }
+            time_params.push((limit as i64).into());
+
+            let sql = format!(
+                "SELECT id, source_id, url, title, domain, path, visit_count,
+                        last_visit_time, first_visit_time, metadata_json, created_at, updated_at
+                 FROM memory_items{}
+                 ORDER BY last_visit_time DESC
+                 LIMIT ?",
+                time_filter
+            );
+            let mut stmt = conn.prepare(&sql)?;
+            let rows = stmt.query_map(rusqlite::params_from_iter(time_params.iter()), |row| {
+                let meta_str: Option<String> = row.get(9)?;
+                let metadata = meta_str.and_then(|s| serde_json::from_str(&s).ok());
+                Ok(MemoryItem {
+                    id: row.get(0)?,
+                    source_id: row.get(1)?,
+                    url: row.get(2)?,
+                    title: row.get(3)?,
+                    domain: row.get(4)?,
+                    path: row.get(5)?,
+                    visit_count: row.get(6)?,
+                    last_visit_time: row.get(7)?,
+                    first_visit_time: row.get(8)?,
+                    relative_time: None,
+                    metadata,
+                    created_at: row.get(10)?,
+                    updated_at: row.get(11)?,
+                })
+            })?;
+            let mut items = Vec::new();
+            for item in rows {
+                items.push(item?);
+            }
+            return Ok(items);
         }
 
         let mut conditions = Vec::new();

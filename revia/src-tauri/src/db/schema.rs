@@ -1,6 +1,6 @@
 use rusqlite::{Connection, Result};
 
-pub const CURRENT_SCHEMA_VERSION: i32 = 1;
+pub const CURRENT_SCHEMA_VERSION: i32 = 2;
 
 pub fn run_migrations(conn: &Connection) -> Result<()> {
     conn.execute_batch(
@@ -15,6 +15,10 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
 
     if current_version < 1 {
         apply_migration_v1(conn)?;
+    }
+
+    if current_version < 2 {
+        apply_migration_v2(conn)?;
     }
 
     Ok(())
@@ -125,3 +129,24 @@ fn apply_migration_v1(conn: &Connection) -> Result<()> {
 
     Ok(())
 }
+
+fn apply_migration_v2(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "
+        CREATE TABLE IF NOT EXISTS memory_embeddings (
+            item_id TEXT PRIMARY KEY REFERENCES memory_items(id) ON DELETE CASCADE,
+            embedding BLOB NOT NULL,
+            model_version TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_embeddings_model ON memory_embeddings(model_version);
+
+        INSERT INTO schema_migrations (version, applied_at)
+        VALUES (2, datetime('now'));
+        "
+    )?;
+
+    Ok(())
+}
+

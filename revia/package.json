@@ -1,7 +1,7 @@
 {
   "name": "revia",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.5.0",
   "description": "Your computer remembers, so you don't have to.",
   "type": "module",
   "scripts": {

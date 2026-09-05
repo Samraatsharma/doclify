@@ -8,8 +8,6 @@ import {
   Info,
   RefreshCw,
   Trash2,
-  Pause,
-  Play,
   Check,
   AlertTriangle,
   HardDrive,
@@ -45,13 +43,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [activeTab, setActiveTab] = useState<TabType>("general");
   const [shortcut, setShortcut] = useState(settings.global_shortcut);
   const [maxResults, setMaxResults] = useState(settings.max_results);
+  const [launchAtLogin, setLaunchAtLogin] = useState(settings.launch_at_login ?? false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [hasAccessibility, setHasAccessibility] = useState<boolean>(true);
 
   useEffect(() => {
     if (isOpen) {
-      invoke("set_window_height", { height: 480 }).catch(() => {});
+      invoke("set_window_height", { height: 500 }).catch(() => {});
+      invoke<boolean>("check_accessibility_permission").then((ok) => {
+        setHasAccessibility(ok ?? true);
+      }).catch(() => {});
     }
   }, [isOpen]);
 
@@ -62,6 +65,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       ...settings,
       global_shortcut: shortcut,
       max_results: maxResults,
+      launch_at_login: launchAtLogin,
     });
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
@@ -93,9 +97,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0, 0, 0, 0.5)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
+        background: "rgba(0, 0, 0, 0.55)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -110,7 +114,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           maxWidth: "540px",
           background: "var(--assistant-bg)",
           border: "1px solid var(--assistant-border)",
-          borderRadius: "14px",
+          borderRadius: "16px",
           boxShadow: "var(--assistant-shadow)",
           display: "flex",
           flexDirection: "column",
@@ -121,12 +125,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       >
         {/* Modal Header */}
         <div
+          className="titlebar-drag"
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             padding: "12px 18px",
             borderBottom: "1px solid var(--border-subtle)",
+            boxShadow: "var(--assistant-bevel)",
           }}
         >
           <div style={{ fontWeight: 700, fontSize: "15px", color: "var(--text-primary)" }}>
@@ -134,6 +140,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
           <button
             onClick={onClose}
+            className="no-drag"
             style={{
               background: "var(--bg-pill)",
               border: "none",
@@ -149,6 +156,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Tab Navigation */}
         <div
+          className="no-drag"
           style={{
             display: "flex",
             borderBottom: "1px solid var(--border-subtle)",
@@ -193,7 +201,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: "18px", overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div className="no-drag" style={{ padding: "18px", overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: "14px" }}>
           {/* TAB: GENERAL */}
           {activeTab === "general" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -202,27 +210,85 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   Global Invocation Shortcut
                 </label>
                 <div style={{ fontSize: "11.5px", color: "var(--text-secondary)", marginBottom: "8px" }}>
-                  Summons Revia immediately from any active application on your Mac.
+                  Summons Revia immediately in the top-right of your active screen.
                 </div>
+
+                {/* Status Indicator */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "8px 12px", marginBottom: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px" }}>
+                    <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "4px", background: hasAccessibility ? "var(--success)" : "#f59e0b" }} />
+                    <span style={{ fontWeight: 600, color: hasAccessibility ? "var(--text-primary)" : "#f59e0b" }}>
+                      {hasAccessibility ? "● Double-Modifier Active" : "○ Accessibility Required for Double-Tap"}
+                    </span>
+                  </div>
+                  {!hasAccessibility && (
+                    <button
+                      onClick={async () => {
+                        const ok = await invoke<boolean>("request_accessibility_permission");
+                        setHasAccessibility(ok);
+                      }}
+                      style={{
+                        background: "var(--accent)",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "5px",
+                        padding: "4px 8px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Grant Permission
+                    </button>
+                  )}
+                </div>
+
+                {/* Shortcut Preset Pills */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
+                  {[
+                    { id: "DoubleControl", label: "Double Control (⌃ ⌃)" },
+                    { id: "DoubleOption", label: "Double Option (⌥ ⌥)" },
+                    { id: "DoubleCommand", label: "Double Command (⌘ ⌘)" },
+                    { id: "Alt+Space", label: "⌥ Option + Space" },
+                  ].map((preset) => (
+                    <button
+                      key={preset.id}
+                      onClick={() => setShortcut(preset.id)}
+                      style={{
+                        background: shortcut === preset.id ? "var(--accent)" : "var(--bg-pill)",
+                        color: shortcut === preset.id ? "#ffffff" : "var(--text-primary)",
+                        border: "1px solid var(--border-subtle)",
+                        borderRadius: "6px",
+                        padding: "5px 10px",
+                        fontSize: "11.5px",
+                        fontWeight: 500,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+
                 <div style={{ display: "flex", gap: "8px" }}>
                   <input
                     type="text"
                     value={shortcut}
                     onChange={(e) => setShortcut(e.target.value)}
-                    placeholder="Control+Space"
+                    placeholder="DoubleControl or Alt+Space"
                     style={{
                       flex: 1,
                       background: "var(--bg-input)",
-                      border: "1px solid var(--border-app)",
+                      border: "1px solid var(--border-subtle)",
                       borderRadius: "6px",
                       padding: "7px 10px",
                       color: "var(--text-primary)",
-                      fontSize: "12.5px",
+                      fontSize: "12px",
                       fontFamily: "var(--font-mono)",
                     }}
                   />
                   <button
-                    onClick={() => setShortcut("Control+Space")}
+                    onClick={() => setShortcut("DoubleControl")}
                     style={{
                       background: "var(--bg-pill)",
                       border: "1px solid var(--border-subtle)",
@@ -233,12 +299,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       cursor: "pointer",
                     }}
                   >
-                    Reset (Ctrl+Space)
+                    Reset Default
                   </button>
                 </div>
               </div>
 
-              <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderTop: "1px solid var(--border-subtle)" }}>
+                <div>
+                  <div style={{ fontSize: "12.5px", fontWeight: 600 }}>Launch Revia at Login</div>
+                  <div style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
+                    Starts Revia quietly in the background menu bar on system startup.
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={launchAtLogin}
+                  onChange={(e) => setLaunchAtLogin(e.target.checked)}
+                  style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                />
+              </div>
+
+              <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: "10px" }}>
                 <label style={{ display: "block", fontSize: "12.5px", fontWeight: 600, marginBottom: "6px" }}>
                   Results Count
                 </label>
@@ -251,29 +332,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         padding: "5px 12px",
                         borderRadius: "6px",
                         border: maxResults === num ? "1px solid var(--accent)" : "1px solid var(--border-subtle)",
-                        background: maxResults === num ? "var(--accent-subtle)" : "var(--bg-pill)",
+                        background: maxResults === num ? "var(--bg-card-selected)" : "var(--bg-pill)",
                         color: maxResults === num ? "var(--accent)" : "var(--text-secondary)",
                         fontWeight: 600,
                         fontSize: "12px",
                         cursor: "pointer",
                       }}
                     >
-                      {num}
+                      {num} items
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "6px" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "10px" }}>
                 <button
                   onClick={handleSaveGeneral}
                   style={{
                     background: "var(--accent)",
-                    color: "#ffffff",
+                    color: "#fff",
                     border: "none",
                     borderRadius: "6px",
                     padding: "7px 16px",
-                    fontSize: "12px",
+                    fontSize: "12.5px",
                     fontWeight: 600,
                     cursor: "pointer",
                     display: "flex",
@@ -281,8 +362,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     gap: "5px",
                   }}
                 >
-                  {isSaved ? <Check size={13} /> : null}
-                  {isSaved ? "Saved!" : "Save Changes"}
+                  {isSaved ? <Check size={14} /> : null}
+                  <span>{isSaved ? "Saved!" : "Save Preferences"}</span>
                 </button>
               </div>
             </div>
@@ -290,150 +371,100 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB: MEMORY */}
           {activeTab === "memory" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
               <div
                 style={{
-                  background: "var(--bg-card-hover)",
+                  background: "var(--bg-card)",
                   border: "1px solid var(--border-subtle)",
                   borderRadius: "8px",
-                  padding: "12px 14px",
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "10px",
+                  padding: "12px",
+                  display: "flex",
+                  justifyContent: "space-around",
+                  textAlign: "center",
                 }}
               >
                 <div>
-                  <div style={{ fontSize: "10.5px", color: "var(--text-tertiary)", fontWeight: 500 }}>
-                    TOTAL MEMORIES
+                  <div style={{ fontSize: "18px", fontWeight: 700, color: "var(--accent)" }}>
+                    {stats?.total_items.toLocaleString() ?? 0}
                   </div>
+                  <div style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>Total Pages</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "18px", fontWeight: 700, color: "var(--success)" }}>
+                    {stats?.total_visits.toLocaleString() ?? 0}
+                  </div>
+                  <div style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>Total Visits</div>
+                </div>
+                <div>
                   <div style={{ fontSize: "18px", fontWeight: 700, color: "var(--text-primary)" }}>
-                    {stats?.total_items ?? 0}
+                    {stats ? formatBytes(stats.database_size_bytes) : "0 B"}
                   </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "10.5px", color: "var(--text-tertiary)", fontWeight: 500 }}>
-                    TOTAL VISITS
-                  </div>
-                  <div style={{ fontSize: "18px", fontWeight: 700, color: "var(--text-primary)" }}>
-                    {stats?.total_visits ?? 0}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "10.5px", color: "var(--text-tertiary)", fontWeight: 500 }}>
-                    DATABASE SIZE
-                  </div>
-                  <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-secondary)" }}>
-                    {stats ? formatBytes(stats.database_size_bytes) : "Calculating..."}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "10.5px", color: "var(--text-tertiary)", fontWeight: 500 }}>
-                    STATUS
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "12.5px",
-                      fontWeight: 600,
-                      color: stats?.is_paused ? "var(--warning)" : "var(--success)",
-                    }}
-                  >
-                    {stats?.is_paused ? "Paused" : isIndexing ? "Indexing..." : "Active"}
-                  </div>
+                  <div style={{ fontSize: "11px", color: "var(--text-tertiary)" }}>Local SQLite Size</div>
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button
-                  onClick={async () => {
-                    const nextPaused = !settings.is_paused;
-                    await invoke("set_pause_memory", { paused: nextPaused });
-                    await onRefreshStats();
-                  }}
-                  style={{
-                    flex: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    padding: "8px 12px",
-                    background: settings.is_paused ? "rgba(245, 158, 11, 0.15)" : "var(--bg-pill)",
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: "6px",
-                    color: settings.is_paused ? "var(--warning)" : "var(--text-primary)",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  {settings.is_paused ? <Play size={13} fill="currentColor" /> : <Pause size={13} />}
-                  {settings.is_paused ? "Resume Memory" : "Pause Memory"}
-                </button>
-
+              <div style={{ display: "flex", gap: "10px", marginTop: "6px" }}>
                 <button
                   onClick={onReindex}
-                  disabled={isIndexing || settings.is_paused}
+                  disabled={isIndexing}
                   style={{
                     flex: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    padding: "8px 12px",
                     background: "var(--bg-pill)",
                     border: "1px solid var(--border-subtle)",
                     borderRadius: "6px",
-                    color: "var(--text-primary)",
+                    padding: "8px 12px",
                     fontSize: "12px",
                     fontWeight: 600,
-                    cursor: isIndexing || settings.is_paused ? "not-allowed" : "pointer",
-                    opacity: isIndexing || settings.is_paused ? 0.6 : 1,
+                    color: "var(--text-primary)",
+                    cursor: isIndexing ? "wait" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
                   }}
                 >
                   <RefreshCw size={13} className={isIndexing ? "spin-icon" : ""} />
-                  {isIndexing ? "Indexing..." : "Re-index Chrome"}
+                  <span>{isIndexing ? "Re-indexing Chrome..." : "Re-index Chrome History"}</span>
                 </button>
               </div>
 
               <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: "12px" }}>
-                <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--danger)" }}>
-                  Clear Revia Index
+                <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--danger)", marginBottom: "4px" }}>
+                  Danger Zone
                 </div>
-                <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "2px", marginBottom: "8px" }}>
-                  Clears Revia's local memory database. Your actual Chrome history is untouched.
+                <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "8px" }}>
+                  Permanently deletes all indexed search items and embeddings from local memory. Does not affect Chrome.
                 </div>
 
                 {showClearConfirm ? (
                   <div
                     style={{
                       background: "rgba(239, 68, 68, 0.12)",
-                      border: "1px solid var(--danger)",
-                      borderRadius: "6px",
+                      border: "1px solid rgba(239, 68, 68, 0.3)",
+                      borderRadius: "8px",
                       padding: "10px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "8px",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--danger)", fontSize: "12px", fontWeight: 600 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--danger)", fontSize: "12px", fontWeight: 600, marginBottom: "8px" }}>
                       <AlertTriangle size={14} />
-                      Are you sure?
+                      <span>Are you sure? This cannot be undone.</span>
                     </div>
-                    <div style={{ display: "flex", gap: "6px" }}>
+                    <div style={{ display: "flex", gap: "8px" }}>
                       <button
                         onClick={handleClearMemory}
                         disabled={isClearing}
                         style={{
                           background: "var(--danger)",
-                          color: "#ffffff",
+                          color: "#fff",
                           border: "none",
-                          borderRadius: "4px",
-                          padding: "5px 10px",
-                          fontSize: "11px",
+                          borderRadius: "6px",
+                          padding: "6px 12px",
+                          fontSize: "11.5px",
                           fontWeight: 600,
                           cursor: "pointer",
                         }}
                       >
-                        {isClearing ? "Clearing..." : "Yes, Clear"}
+                        {isClearing ? "Clearing..." : "Yes, Delete Memory"}
                       </button>
                       <button
                         onClick={() => setShowClearConfirm(false)}
@@ -441,9 +472,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           background: "var(--bg-pill)",
                           color: "var(--text-secondary)",
                           border: "1px solid var(--border-subtle)",
-                          borderRadius: "4px",
-                          padding: "5px 10px",
-                          fontSize: "11px",
+                          borderRadius: "6px",
+                          padding: "6px 12px",
+                          fontSize: "11.5px",
                           cursor: "pointer",
                         }}
                       >
@@ -481,17 +512,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", fontSize: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--success)", fontWeight: 600 }}>
                 <Shield size={16} />
-                <span>100% Local-First & Zero Cloud</span>
+                <span>Local-First Memory Architecture</span>
               </div>
               <p style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                Revia never sends your queries, search results, or browser history to any server or AI API.
+                Chrome history indexing, SQLite FTS5 search, and 384-dimensional MiniLM vector embeddings run completely on-device on your Mac. No search queries or browsing histories are ever sent to any remote server or AI API.
               </p>
 
               <div
                 style={{
-                  background: "var(--bg-card-hover)",
+                  background: "var(--bg-card)",
                   border: "1px solid var(--border-subtle)",
-                  borderRadius: "6px",
+                  borderRadius: "8px",
                   padding: "10px 12px",
                   display: "flex",
                   flexDirection: "column",
@@ -500,7 +531,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "5px", fontWeight: 600 }}>
                   <HardDrive size={13} color="var(--accent)" />
-                  <span>Local SQLite Path</span>
+                  <span>Local SQLite Database</span>
                 </div>
                 <div
                   style={{
@@ -513,20 +544,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   {stats?.database_path ?? "~/Library/Application Support/com.revia.app/revia.db"}
                 </div>
               </div>
+
+              <div style={{ color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                <strong style={{ color: "var(--text-primary)" }}>Voice Privacy Note:</strong> Voice dictation uses macOS WebKit SpeechRecognition. Depending on your macOS Dictation preferences in System Settings, dictation may run on-device or utilize Apple's privacy-preserving speech servers.
+              </div>
             </div>
           )}
 
           {/* TAB: ABOUT */}
           {activeTab === "about" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", textAlign: "center", padding: "6px 0" }}>
-              <div style={{ fontWeight: 700, fontSize: "16px", color: "var(--text-primary)" }}>
-                Revia v1.0.1
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", textAlign: "center", padding: "8px 0" }}>
+              <div style={{ fontWeight: 700, fontSize: "17px", color: "var(--text-primary)" }}>
+                Revia v1.5.0
               </div>
               <div style={{ fontSize: "12px", color: "var(--text-secondary)", fontStyle: "italic" }}>
                 "Your computer remembers, so you don’t have to."
               </div>
 
-              <div style={{ display: "flex", justifyContent: "center", marginTop: "8px" }}>
+              <div style={{ display: "flex", justifyContent: "center", marginTop: "12px" }}>
                 <button
                   onClick={() => {
                     onClose();
@@ -536,17 +571,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     background: "var(--bg-pill)",
                     border: "1px solid var(--border-subtle)",
                     borderRadius: "6px",
-                    padding: "6px 12px",
+                    padding: "7px 14px",
                     color: "var(--accent)",
-                    fontSize: "11.5px",
+                    fontSize: "12px",
                     fontWeight: 600,
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: "5px",
+                    gap: "6px",
                   }}
                 >
-                  <RotateCcw size={12} />
+                  <RotateCcw size={13} />
                   <span>Replay Setup Tutorial</span>
                 </button>
               </div>
@@ -554,7 +589,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           )}
         </div>
       </div>
-      <style>{`.spin-icon { animation: spin 1s linear infinite; }`}</style>
     </div>
   );
 };

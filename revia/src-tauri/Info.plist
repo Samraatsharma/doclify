@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Revia uses your microphone to transcribe voice searches locally on your Mac.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Revia uses speech recognition to convert spoken queries into local memory searches.</string>
+    <key>NSAccessibilityUsageDescription</key>
+    <string>Revia needs Accessibility access to detect the Double-Control global shortcut.</string>
+</dict>
+</plist>

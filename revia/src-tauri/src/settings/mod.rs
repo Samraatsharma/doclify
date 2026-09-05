@@ -1,7 +1,31 @@
 use crate::db::Database;
 use serde::{Deserialize, Serialize};
+use tauri_plugin_global_shortcut::Shortcut;
 
-pub const DEFAULT_SHORTCUT: &str = "Control+Space";
+pub const DEFAULT_SHORTCUT: &str = "DoubleControl";
+
+pub fn parse_shortcut(s: &str) -> Result<Shortcut, String> {
+    let clean = s.trim();
+    if clean.to_lowercase().contains("double") || clean == "⌃ ⌃" || clean == "⌥ ⌥" || clean == "⌘ ⌘" || clean == "⇧ ⇧" {
+        return "Alt+Space".parse::<Shortcut>().map_err(|e| e.to_string());
+    }
+
+    let mut normalized = clean
+        .replace("Option", "Alt")
+        .replace("option", "Alt")
+        .replace("⌥", "Alt")
+        .replace("Cmd", "Command")
+        .replace("cmd", "Command")
+        .replace("⌘", "Command")
+        .replace("Ctrl", "Control")
+        .replace("ctrl", "Control");
+
+    if !normalized.contains('+') && normalized.contains(' ') {
+        normalized = normalized.split_whitespace().collect::<Vec<_>>().join("+");
+    }
+
+    normalized.parse::<Shortcut>().map_err(|e| e.to_string())
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
@@ -72,3 +96,18 @@ pub fn save_settings(db: &Database, settings: &AppSettings) -> Result<(), String
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_shortcut_parsing() {
+        assert!(parse_shortcut("Alt+Space").is_ok());
+        assert!(parse_shortcut("Option+Space").is_ok());
+        assert!(parse_shortcut("⌥ Space").is_ok());
+        assert!(parse_shortcut("Control+Space").is_ok());
+        assert!(parse_shortcut("CommandOrControl+Space").is_ok());
+    }
+}
+

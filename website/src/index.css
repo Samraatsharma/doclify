@@ -1,0 +1,414 @@
+/* ==========================================================================
+   REVIA WEBSITE — ART DIRECTION & EDITORIAL DESIGN SYSTEM
+   Dominant Light Environment · Cinematic Transitions · Tactile Craft
+   ========================================================================== */
+
+:root {
+  /* --- LIGHT DOMINANT PALETTE (Primary Environment) --- */
+  --bg-canvas: #fcfbf9;
+  --bg-ivory: #f7f5f0;
+  --bg-linen: #f4f2ec;
+  --bg-sand: #ebe8df;
+  --bg-surface-light: #ffffff;
+  --bg-surface-elevated: #ffffff;
+
+  /* Text & Ink for Light Environments */
+  --text-ink: #11141a;
+  --text-lead: #1e242f;
+  --text-body: #444d5c;
+  --text-muted: #747f92;
+  --text-whisper: #a2abb9;
+
+  /* Architectural Borders (Light) */
+  --border-light-hairline: rgba(17, 20, 26, 0.05);
+  --border-light-subtle: rgba(17, 20, 26, 0.09);
+  --border-light-medium: rgba(17, 20, 26, 0.15);
+  --border-light-strong: rgba(17, 20, 26, 0.25);
+
+  /* --- DARK CINEMATIC PALETTE (Chapter Environments) --- */
+  --bg-midnight: #090c12;
+  --bg-graphite: #0f131c;
+  --bg-slate-dark: #151a24;
+  --bg-surface-dark: #131823;
+
+  /* Text for Dark Environments */
+  --text-dark-pure: #ffffff;
+  --text-dark-primary: #f1f5f9;
+  --text-dark-secondary: #94a3b8;
+  --text-dark-muted: #64748b;
+
+  /* Architectural Borders (Dark) */
+  --border-dark-hairline: rgba(255, 255, 255, 0.06);
+  --border-dark-subtle: rgba(255, 255, 255, 0.12);
+  --border-dark-strong: rgba(255, 255, 255, 0.22);
+
+  /* --- RESTRAINED ACCENTS --- */
+  --accent-violet: #6366f1;
+  --accent-purple: #8b5cf6;
+  --accent-cyan: #0284c7;
+  --accent-cyan-light: #38bdf8;
+  --accent-emerald: #059669;
+  --accent-amber: #d97706;
+  --accent-highlight: #fef08a; /* Subtle soft yellow memory marker */
+  --accent-highlight-border: #fde047;
+
+  /* --- TYPOGRAPHY FAMILIES --- */
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* --- ELEVATIONS & SHADOWS --- */
+  --shadow-sm: 0 1px 3px rgba(17, 20, 26, 0.04), 0 1px 2px rgba(17, 20, 26, 0.03);
+  --shadow-md: 0 4px 14px rgba(17, 20, 26, 0.06), 0 1px 3px rgba(17, 20, 26, 0.03);
+  --shadow-lg: 0 12px 32px rgba(17, 20, 26, 0.08), 0 4px 10px rgba(17, 20, 26, 0.03);
+  --shadow-xl: 0 24px 60px rgba(17, 20, 26, 0.11), 0 8px 18px rgba(17, 20, 26, 0.05);
+  --shadow-capsule: 0 18px 45px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Base Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-family: var(--font-body);
+  background-color: var(--bg-canvas);
+  color: var(--text-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+  background-color: var(--bg-canvas);
+  color: var(--text-body);
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--text-ink);
+}
+
+/* Container */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+.container-narrow {
+  width: 100%;
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+.container-wide {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+/* --- TYPOGRAPHIC HIERARCHY --- */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-ink);
+  line-height: 1.15;
+}
+
+.headline-hero {
+  font-size: clamp(44px, 7vw, 84px);
+  line-height: 1.02;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text-ink);
+}
+
+.headline-editorial {
+  font-size: clamp(34px, 5vw, 60px);
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: var(--text-ink);
+}
+
+.headline-section {
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-ink);
+}
+
+.serif-italic {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.serif-highlight {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  color: var(--text-ink);
+  background: linear-gradient(180deg, transparent 65%, rgba(254, 240, 138, 0.75) 65%);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+.lead-paragraph {
+  font-size: clamp(17px, 2.2vw, 21px);
+  line-height: 1.55;
+  color: var(--text-body);
+  font-weight: 400;
+}
+
+.lead-paragraph-dark {
+  font-size: clamp(17px, 2.2vw, 21px);
+  line-height: 1.55;
+  color: var(--text-dark-secondary);
+  font-weight: 400;
+}
+
+.micro-mono-badge {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+/* --- TACTILE BUTTONS --- */
+.btn-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: var(--text-ink);
+  color: #ffffff;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 15px;
+  padding: 13px 26px;
+  border-radius: 12px;
+  text-decoration: none;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(17, 20, 26, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.btn-dark:hover {
+  background: #000000;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(17, 20, 26, 0.2);
+}
+
+.btn-light {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #ffffff;
+  color: var(--text-ink);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14.5px;
+  padding: 12px 22px;
+  border-radius: 12px;
+  text-decoration: none;
+  border: 1px solid var(--border-light-medium);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-light:hover {
+  border-color: var(--border-light-strong);
+  background: var(--bg-ivory);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-white {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: #ffffff;
+  color: #05070a;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 15px;
+  padding: 13px 26px;
+  border-radius: 12px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2);
+}
+
+.btn-white:hover {
+  background: #f8fafc;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(255, 255, 255, 0.35);
+}
+
+/* --- TACTILE TEXTURES & MATERIALS --- */
+.texture-grid-subtle {
+  background-image: 
+    linear-gradient(to right, rgba(17, 20, 26, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 20, 26, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.texture-grid-dark {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.texture-dots-subtle {
+  background-image: radial-gradient(rgba(17, 20, 26, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.specular-top-light {
+  position: relative;
+}
+.specular-top-light::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9) 30%, rgba(255, 255, 255, 0.9) 70%, transparent);
+  pointer-events: none;
+}
+
+.specular-top-dark {
+  position: relative;
+}
+.specular-top-dark::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25) 30%, rgba(255, 255, 255, 0.25) 70%, transparent);
+  pointer-events: none;
+}
+
+/* --- CARDS & SURFACES --- */
+.card-light-editorial {
+  background: #ffffff;
+  border: 1px solid var(--border-light-subtle);
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-light-editorial:hover {
+  border-color: var(--border-light-medium);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.card-dark-cinematic {
+  background: linear-gradient(180deg, #111622 0%, #0c1018 100%);
+  border: 1px solid var(--border-dark-subtle);
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Keyframe Animations */
+@keyframes breathingPulse {
+  0%, 100% { transform: scale(1); opacity: 0.95; }
+  50% { transform: scale(1.03); opacity: 1; }
+}
+
+@keyframes slowOrbit {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes reverseOrbit {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes floatMems {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-7px) rotate(1deg); }
+}
+
+@keyframes waveBar {
+  0%, 100% { transform: scaleY(0.25); }
+  50% { transform: scaleY(1); }
+}
+
+@keyframes ripplePulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 20, 26, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn 0.2s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  .container, .container-narrow, .container-wide {
+    padding: 0 20px;
+  }
+}

@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { requiresAccessibilityPermission } from "../utils/platform";
 import {
   Mic,
-  MicOff,
   ExternalLink,
   Copy,
   Maximize2,
@@ -13,7 +14,7 @@ import {
   Clock,
   Flame,
   Check,
-  Pause,
+  Search,
 } from "lucide-react";
 import { ReviaOrb, OrbState } from "./ReviaOrb";
 import { MemoryItem, MemoryStats } from "../types";
@@ -27,10 +28,13 @@ interface CompactAssistantProps {
   isListening: boolean;
   interimTranscript: string;
   audioLevel: number;
+  voiceError?: string | null;
+  onOpenMicrophoneSettings?: () => void;
   onToggleVoice: () => void;
   onSelectResult: (item: MemoryItem) => void;
   onOpenSettings: () => void;
-  onTogglePause: () => void;
+  onTogglePause?: () => void;
+  onDismiss?: () => void;
   stats: MemoryStats | null;
 }
 
@@ -43,61 +47,102 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
   isListening,
   interimTranscript,
   audioLevel,
+  voiceError,
+  onOpenMicrophoneSettings,
   onToggleVoice,
   onSelectResult,
   onOpenSettings,
-  onTogglePause,
+  onTogglePause: _onTogglePause,
+  onDismiss,
   stats,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [isDismissing, setIsDismissing] = useState<boolean>(false);
+  const [hasAccessibility, setHasAccessibility] = useState<boolean>(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
 
-  // Determine current orb state
+  // Dynamic Orb State
   let orbState: OrbState = "idle";
   if (isListening) orbState = "listening";
   else if (isLoading) orbState = "searching";
   else if (results.length > 0 && query.trim().length > 0) orbState = "results";
 
-  // Auto-focus input on mount and keep focus
+  // Check accessibility permission on mount and focus
+  const checkAccessibility = useCallback(async () => {
+    try {
+      const trusted = await invoke<boolean>("check_accessibility_permission");
+      setHasAccessibility(trusted);
+    } catch {
+      setHasAccessibility(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkAccessibility();
+  }, [checkAccessibility]);
+
+  // Focus input immediately on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // Window shown event refocus
+  // Listen to window-shown and native focus events to refocus input instantly
   useEffect(() => {
     const handleFocus = () => {
       inputRef.current?.focus();
       inputRef.current?.select();
+      checkAccessibility();
     };
     window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, []);
 
-  // Update selected index when results change
+    let unlisten: (() => void) | undefined;
+    listen("window-shown", () => {
+      setIsDismissing(false);
+      checkAccessibility();
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 20);
+    }).then((u) => {
+      unlisten = u;
+    });
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      if (unlisten) unlisten();
+    };
+  }, [checkAccessibility]);
+
+  // Reset selected index on query or results change
   useEffect(() => {
     setSelectedIndex(0);
   }, [query, results.length]);
 
   // Adjust native window height dynamically based on state
   useEffect(() => {
-    let targetHeight = 56;
+    let extra = 0;
+    if (!hasAccessibility) extra += 28;
+    if (voiceError) extra += 28;
+
+    let targetHeight = 52 + extra;
     if (results.length > 0) {
-      targetHeight = isExpanded ? 500 : 330;
-    } else if (query.trim().length > 0 && !isLoading) {
-      targetHeight = 160; // Empty results state
+      targetHeight = isExpanded ? 440 + extra : Math.min(320 + extra, 52 + extra + Math.min(results.length, 3) * 72 + 38);
+    } else if (query.trim().length > 0) {
+      // Accommodates either "Searching your memory..." indicator or "Nothing found"
+      targetHeight = 105 + extra;
     }
     invoke("set_window_height", { height: targetHeight }).catch(() => {});
-  }, [results.length, isExpanded, query, isLoading]);
+  }, [results.length, isExpanded, query, isLoading, hasAccessibility, voiceError]);
 
-  // Scroll active item into view
+  // Auto-scroll selected card into view
   useEffect(() => {
     if (resultsContainerRef.current && results.length > 0) {
       const activeEl = resultsContainerRef.current.children[selectedIndex] as HTMLElement;
       if (activeEl) {
-        activeEl.scrollIntoView({ block: "nearest" });
+        activeEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
       }
     }
   }, [selectedIndex, results.length]);
@@ -106,7 +151,19 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
     e.stopPropagation();
     navigator.clipboard.writeText(url);
     setCopiedUrl(url);
-    setTimeout(() => setCopiedUrl(null), 1500);
+    setTimeout(() => setCopiedUrl(null), 1400);
+  };
+
+  const handleDismiss = () => {
+    setIsDismissing(true);
+    setTimeout(() => {
+      if (onDismiss) {
+        onDismiss();
+      } else {
+        invoke("hide_search_window").catch(() => {});
+      }
+      setIsDismissing(false);
+    }, 140);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -123,15 +180,15 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (results.length > 0 && selectedIndex >= 0 && selectedIndex < results.length) {
-        onSelectResult(results[selectedIndex]);
+        const item = results[selectedIndex];
+        setIsDismissing(true);
+        setTimeout(() => {
+          onSelectResult(item);
+        }, 100);
       }
     } else if (e.key === "Escape") {
       e.preventDefault();
-      if (query.trim().length > 0) {
-        onQueryChange("");
-      } else {
-        invoke("hide_search_window");
-      }
+      handleDismiss();
     } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "e") {
       e.preventDefault();
       setIsExpanded((prev) => !prev);
@@ -144,7 +201,7 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
         const activeUrl = results[selectedIndex].url;
         navigator.clipboard.writeText(activeUrl);
         setCopiedUrl(activeUrl);
-        setTimeout(() => setCopiedUrl(null), 1500);
+        setTimeout(() => setCopiedUrl(null), 1400);
       }
     }
   };
@@ -153,36 +210,42 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
 
   return (
     <div
-      className="revia-floating-assistant"
+      className={`revia-floating-assistant ${isDismissing ? "animate-dematerialize" : "animate-materialize"}`}
       onKeyDown={handleKeyDown}
       style={{
         display: "flex",
         flexDirection: "column",
-        width: "100%",
-        borderRadius: "16px",
-        background: "var(--assistant-bg)",
-        backdropFilter: "blur(32px) saturate(190%)",
-        WebkitBackdropFilter: "blur(32px) saturate(190%)",
-        border: "1px solid var(--assistant-border)",
-        boxShadow: "var(--assistant-shadow)",
+        width: "420px",
+        maxWidth: "420px",
+        borderRadius: results.length > 0 || (query.trim().length > 0 && !isLoading) || !hasAccessibility || Boolean(voiceError) ? "22px" : "9999px",
+        background: "linear-gradient(145deg, rgba(20, 24, 38, 0.86) 0%, rgba(10, 13, 22, 0.92) 100%)",
+        backdropFilter: "blur(48px) saturate(210%) contrast(108%)",
+        WebkitBackdropFilter: "blur(48px) saturate(210%) contrast(108%)",
+        border: "1px solid rgba(255, 255, 255, 0.16)",
+        boxShadow: isListening
+          ? "0 20px 48px -10px rgba(0, 0, 0, 0.8), 0 0 28px -2px rgba(16, 185, 129, 0.4), inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 1px 0 rgba(0, 0, 0, 0.6)"
+          : "0 20px 48px -10px rgba(0, 0, 0, 0.8), 0 0 24px -2px rgba(99, 102, 241, 0.2), inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.38), inset 0 -1px 1px 0 rgba(0, 0, 0, 0.6)",
+        boxSizing: "border-box",
         overflow: "hidden",
-        transition: "box-shadow 0.2s ease, border-color 0.2s ease",
+        transition: "border-radius 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease",
       }}
     >
-      {/* PRIMARY FLOATING SEARCH BAR */}
+      {/* 1. COMPACT HORIZONTAL ASSISTANT CAPSULE (420px x 52px) */}
       <div
         className="titlebar-drag"
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "12px",
-          padding: "10px 14px",
-          minHeight: "56px",
+          gap: "10px",
+          padding: "0 14px",
+          height: "52px",
+          minHeight: "52px",
           position: "relative",
+          boxSizing: "border-box",
         }}
       >
-        {/* Animated Holographic Revia Orb */}
-        <div className="no-drag">
+        {/* Animated 3D Revia Memory Core Orb */}
+        <div className="no-drag" style={{ display: "flex", alignItems: "center" }}>
           <ReviaOrb
             state={orbState}
             audioLevel={audioLevel}
@@ -191,28 +254,36 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
           />
         </div>
 
-        {/* Search Input & Live Voice Transcription */}
+        {/* Search Field & Voice Transcription */}
         <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center" }} className="no-drag">
           <input
             ref={inputRef}
             type="text"
             value={isListening ? (interimTranscript || query) : query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder={isListening ? "Listening to your voice..." : "What do you remember?"}
+            placeholder={
+              isListening
+                ? "Listening... speak now"
+                : isPaused
+                ? "Memory is paused"
+                : "What do you remember?"
+            }
+            disabled={isPaused}
             style={{
               width: "100%",
               background: "transparent",
               border: "none",
               outline: "none",
-              color: isListening ? "var(--accent)" : "var(--text-primary)",
-              fontSize: "15px",
-              fontFamily: "inherit",
-              fontWeight: 500,
+              color: isListening ? "#34d399" : "#f1f5f9",
+              fontSize: "14px",
+              fontFamily: "system-ui, -apple-system, sans-serif",
+              fontWeight: 450,
               letterSpacing: "-0.01em",
+              paddingRight: isListening ? "50px" : "20px",
             }}
           />
 
-          {/* Audio Waveform Ripple Visualizer when listening */}
+          {/* Real-time Voice Audio Waveform Equalizer */}
           {isListening && (
             <div
               style={{
@@ -220,19 +291,20 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
                 right: "4px",
                 display: "flex",
                 alignItems: "center",
-                gap: "2.5px",
+                gap: "2px",
                 pointerEvents: "none",
               }}
             >
-              {[0.4, 0.9, 0.6, 1.0, 0.5, 0.8].map((h, i) => (
+              {[0.4, 0.9, 0.6, 1.0, 0.7].map((h, i) => (
                 <div
                   key={i}
                   style={{
-                    width: "2.5px",
-                    height: `${Math.max(6, (audioLevel * 24 + 6) * h)}px`,
-                    background: "var(--accent)",
+                    width: "2px",
+                    height: `${Math.max(4, (audioLevel * 18 + 3) * h)}px`,
+                    background: "#10b981",
                     borderRadius: "2px",
-                    transition: "height 0.08s ease",
+                    boxShadow: "0 0 4px rgba(16, 185, 129, 0.7)",
+                    transition: "height 0.06s ease",
                   }}
                 />
               ))}
@@ -240,236 +312,309 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
           )}
         </div>
 
-        {/* Action Controls on the Right */}
-        <div className="no-drag" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          {/* Clear Button */}
-          {query.trim().length > 0 && !isListening && (
-            <button
-              onClick={() => onQueryChange("")}
-              title="Clear (Esc)"
-              style={{
-                background: "var(--bg-pill)",
-                border: "none",
-                borderRadius: "50%",
-                width: "20px",
-                height: "20px",
-                color: "var(--text-tertiary)",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "11px",
-              }}
-            >
-              <X size={12} />
-            </button>
-          )}
-
-          {/* Paused Memory Badge */}
-          {isPaused && (
-            <button
-              onClick={onTogglePause}
-              title="Memory is paused. Click to resume."
-              style={{
-                background: "rgba(245, 158, 11, 0.2)",
-                border: "1px solid rgba(245, 158, 11, 0.4)",
-                borderRadius: "6px",
-                padding: "3px 6px",
-                color: "var(--warning)",
-                fontSize: "10.5px",
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "3px",
-              }}
-            >
-              <Pause size={10} />
-              <span>Paused</span>
-            </button>
-          )}
-
-          {/* Voice Microphone Control */}
+        {/* Clean Controls: Microphone, Settings, Close */}
+        <div className="no-drag" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          {/* PRIMARY INTERACTION: Tactile Glowing Microphone Button */}
           <button
             onClick={onToggleVoice}
-            title={isListening ? "Stop listening (⌘M)" : "Speak what you remember (⌘M)"}
+            title={isListening ? "Stop listening (⌘M)" : "Search with voice (⌘M)"}
             style={{
               background: isListening
-                ? "radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, rgba(6, 182, 212, 0.15) 100%)"
-                : "var(--bg-pill)",
-              border: isListening ? "1px solid rgba(16, 185, 129, 0.6)" : "1px solid var(--border-subtle)",
-              borderRadius: "8px",
-              padding: "6px 8px",
-              color: isListening ? "var(--success)" : "var(--text-secondary)",
-              cursor: "pointer",
+                ? "linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(6, 182, 212, 0.25) 100%)"
+                : "linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.18) 100%)",
+              border: isListening
+                ? "1px solid rgba(16, 185, 129, 0.75)"
+                : "1px solid rgba(99, 102, 241, 0.45)",
+              boxShadow: isListening
+                ? "0 0 20px rgba(16, 185, 129, 0.65), inset 0 1px 2px rgba(255, 255, 255, 0.5)"
+                : "0 0 14px rgba(99, 102, 241, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.25)",
+              borderRadius: "16px",
+              padding: "0 10px",
+              height: "30px",
               display: "flex",
               alignItems: "center",
-              gap: "4px",
-              transition: "all 0.15s ease",
+              gap: "5px",
+              color: isListening ? "#34d399" : "#ffffff",
+              cursor: "pointer",
+              transition: "all 0.18s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+            onMouseEnter={(e) => {
+              if (!isListening) {
+                e.currentTarget.style.boxShadow = "0 0 18px rgba(99, 102, 241, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.4)";
+                e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.7)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isListening) {
+                e.currentTarget.style.boxShadow = "0 0 14px rgba(99, 102, 241, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.25)";
+                e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.45)";
+              }
             }}
           >
-            {isListening ? <MicOff size={14} /> : <Mic size={14} />}
+            {isListening ? (
+              <>
+                <Mic size={13} className="animate-pulse" />
+                <span style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "-0.01em" }}>Listening</span>
+              </>
+            ) : (
+              <>
+                <Mic size={13} style={{ color: "#818cf8" }} />
+                <span style={{ fontSize: "11px", fontWeight: 550, color: "rgba(255, 255, 255, 0.9)" }}>Voice</span>
+              </>
+            )}
           </button>
 
           {/* Settings Button */}
           <button
             onClick={onOpenSettings}
-            title={stats ? `${stats.total_items} indexed memories · Settings` : "Settings"}
+            title="Settings"
             style={{
-              background: "var(--bg-pill)",
-              border: "1px solid var(--border-subtle)",
-              borderRadius: "8px",
-              padding: "6px",
-              color: "var(--text-secondary)",
-              cursor: "pointer",
+              background: "transparent",
+              border: "none",
+              borderRadius: "50%",
+              width: "24px",
+              height: "24px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              color: "rgba(255, 255, 255, 0.45)",
+              cursor: "pointer",
+              transition: "color 0.15s ease",
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 255, 255, 0.85)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255, 255, 255, 0.45)")}
           >
-            <Settings size={14} />
+            <Settings size={13} />
+          </button>
+
+          {/* Dismiss / Close Button */}
+          <button
+            onClick={handleDismiss}
+            title="Dismiss (Esc)"
+            style={{
+              background: "transparent",
+              border: "none",
+              borderRadius: "50%",
+              width: "24px",
+              height: "24px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "rgba(255, 255, 255, 0.45)",
+              cursor: "pointer",
+              transition: "color 0.15s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255, 255, 255, 0.85)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255, 255, 255, 0.45)")}
+          >
+            <X size={14} />
           </button>
         </div>
       </div>
 
-      {/* RESULTS LIST SECTION (APPEARS UNDER QUERY) */}
+      {/* Accessibility Permission Banner - macOS only */}
+      {requiresAccessibilityPermission() && !hasAccessibility && (
+        <div
+          className="no-drag"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "5px 12px",
+            background: "rgba(234, 179, 8, 0.14)",
+            borderTop: "1px solid rgba(234, 179, 8, 0.25)",
+            fontSize: "11px",
+            color: "#fef08a",
+            boxSizing: "border-box",
+          }}
+        >
+          <span style={{ fontWeight: 500 }}>
+            Accessibility is only required for ⌃⌃ shortcut
+          </span>
+          <button
+            onClick={() => {
+              invoke("request_accessibility_permission").catch(() => {});
+              invoke("open_accessibility_settings").catch(() => {});
+              setTimeout(checkAccessibility, 1500);
+              setTimeout(checkAccessibility, 3500);
+            }}
+            style={{
+              background: "rgba(234, 179, 8, 0.25)",
+              border: "1px solid rgba(234, 179, 8, 0.45)",
+              borderRadius: "5px",
+              padding: "2px 8px",
+              color: "#fff",
+              fontSize: "10.5px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Grant Access
+          </button>
+        </div>
+      )}
+
+      {/* Voice Error Banner */}
+      {voiceError && (
+        <div
+          className="no-drag"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "5px 12px",
+            background: "rgba(239, 68, 68, 0.15)",
+            borderTop: "1px solid rgba(239, 68, 68, 0.3)",
+            fontSize: "11px",
+            color: "#fca5a5",
+            boxSizing: "border-box",
+          }}
+        >
+          <span style={{ fontWeight: 500 }}>{voiceError}</span>
+          {onOpenMicrophoneSettings && (
+            <button
+              onClick={onOpenMicrophoneSettings}
+              style={{
+                background: "rgba(239, 68, 68, 0.25)",
+                border: "1px solid rgba(239, 68, 68, 0.45)",
+                borderRadius: "5px",
+                padding: "2px 8px",
+                color: "#fff",
+                fontSize: "10.5px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Settings
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* 2. RESULTS CONTAINER (Smooth Downward Expansion) */}
       {results.length > 0 && (
         <div
           style={{
-            borderTop: "1px solid var(--border-subtle)",
+            borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+            background: "rgba(0, 0, 0, 0.15)",
             display: "flex",
             flexDirection: "column",
-            maxHeight: isExpanded ? "400px" : "240px",
-            overflow: "hidden",
-            animation: "fadeInExpand 0.2s ease-out",
+            maxHeight: isExpanded ? "380px" : "260px",
+            transition: "max-height 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
+          {/* Results List */}
           <div
             ref={resultsContainerRef}
+            className="no-drag"
             style={{
-              padding: "8px 10px",
               overflowY: "auto",
+              padding: "6px 8px",
               display: "flex",
               flexDirection: "column",
               gap: "4px",
             }}
           >
-            {displayResults.map((item, idx) => {
-              const isSelected = idx === selectedIndex;
+            {displayResults.map((item, index) => {
+              const isSelected = index === selectedIndex;
               return (
                 <div
                   key={item.id}
                   onClick={() => onSelectResult(item)}
-                  onMouseEnter={() => setSelectedIndex(idx)}
+                  onMouseEnter={() => setSelectedIndex(index)}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    padding: "8px 12px",
+                    padding: "8px 10px",
                     borderRadius: "10px",
-                    background: isSelected ? "var(--bg-card-selected)" : "transparent",
-                    border: isSelected ? "1px solid var(--border-selected)" : "1px solid transparent",
+                    background: isSelected ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.03)",
+                    border: isSelected ? "1px solid rgba(255, 255, 255, 0.2)" : "1px solid transparent",
                     cursor: "pointer",
-                    transition: "all 0.12s ease",
+                    transition: "all 0.1s ease-out",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden", flex: 1 }}>
-                    <div
-                      style={{
-                        width: "26px",
-                        height: "26px",
-                        borderRadius: "7px",
-                        background: isSelected ? "rgba(59, 130, 246, 0.3)" : "var(--bg-pill)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: isSelected ? "var(--accent)" : "var(--text-secondary)",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Globe size={13} />
-                    </div>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: "2px", overflow: "hidden", flex: 1 }}>
-                      <div
+                  {/* Left info: Globe, Title, Domain, Time */}
+                  <div style={{ flex: 1, minWidth: 0, marginRight: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+                      <Globe size={12} style={{ color: isSelected ? "#38bdf8" : "rgba(255, 255, 255, 0.4)", flexShrink: 0 }} />
+                      <span
                         style={{
                           fontSize: "13px",
-                          fontWeight: 600,
-                          color: "var(--text-primary)",
-                          whiteSpace: "nowrap",
+                          fontWeight: isSelected ? 600 : 450,
+                          color: isSelected ? "#ffffff" : "rgba(255, 255, 255, 0.85)",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
                         }}
                       >
-                        {item.title}
-                      </div>
+                        {item.title || item.url}
+                      </span>
+                    </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "var(--text-tertiary)" }}>
-                        <span style={{ fontWeight: 600, color: isSelected ? "var(--accent)" : "var(--text-secondary)" }}>
-                          {item.domain}
-                        </span>
-                        <span>·</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "11px", color: "rgba(255, 255, 255, 0.45)" }}>
+                      <span
+                        style={{
+                          background: "rgba(255, 255, 255, 0.08)",
+                          padding: "1px 5px",
+                          borderRadius: "4px",
+                          fontWeight: 500,
+                          color: "rgba(255, 255, 255, 0.7)",
+                        }}
+                      >
+                        {item.domain}
+                      </span>
+
+                      {item.relative_time && (
                         <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
                           <Clock size={10} />
-                          {item.relative_time ?? "Recently"}
+                          {item.relative_time}
                         </span>
-                        {item.visit_count > 1 && (
-                          <>
-                            <span>·</span>
-                            <span style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-                              <Flame size={10} color="var(--warning)" />
-                              {item.visit_count}x
-                            </span>
-                          </>
-                        )}
-                      </div>
+                      )}
+
+                      {item.visit_count > 1 && (
+                        <span style={{ display: "flex", alignItems: "center", gap: "2px", color: "#f59e0b" }}>
+                          <Flame size={10} />
+                          {item.visit_count}
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Actions on active item */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "10px", flexShrink: 0 }}>
+                  {/* Right quick actions */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={(e) => handleCopy(e, item.url)}
                       title="Copy URL (⌘C)"
                       style={{
-                        background: copiedUrl === item.url ? "rgba(16, 185, 129, 0.2)" : "var(--bg-pill)",
+                        background: "transparent",
                         border: "none",
+                        padding: "4px",
                         borderRadius: "5px",
-                        padding: "4px 7px",
-                        color: copiedUrl === item.url ? "var(--success)" : "var(--text-secondary)",
+                        color: copiedUrl === item.url ? "#10b981" : "rgba(255, 255, 255, 0.4)",
                         cursor: "pointer",
-                        fontSize: "10.5px",
                         display: "flex",
                         alignItems: "center",
-                        gap: "3px",
                       }}
                     >
-                      {copiedUrl === item.url ? <Check size={11} /> : <Copy size={11} />}
-                      <span>{copiedUrl === item.url ? "Copied" : "Copy"}</span>
+                      {copiedUrl === item.url ? <Check size={12} /> : <Copy size={12} />}
                     </button>
 
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectResult(item);
-                      }}
-                      title="Open (↵)"
+                      onClick={() => onSelectResult(item)}
+                      title="Open in browser (Enter)"
                       style={{
-                        background: isSelected ? "var(--accent)" : "var(--bg-pill)",
-                        color: isSelected ? "#ffffff" : "var(--text-primary)",
+                        background: "transparent",
                         border: "none",
+                        padding: "4px",
                         borderRadius: "5px",
-                        padding: "4px 8px",
+                        color: isSelected ? "#38bdf8" : "rgba(255, 255, 255, 0.4)",
                         cursor: "pointer",
-                        fontSize: "11px",
-                        fontWeight: 600,
                         display: "flex",
                         alignItems: "center",
-                        gap: "3px",
                       }}
                     >
-                      <span>Open</span>
-                      <ExternalLink size={11} />
+                      <ExternalLink size={12} />
                     </button>
                   </div>
                 </div>
@@ -477,87 +622,110 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
             })}
           </div>
 
-          {/* COMPACT FOOTER ACTIONS BAR */}
+          {/* Bottom Bar: Stats & Navigation Guide */}
           <div
+            className="titlebar-drag"
             style={{
-              padding: "6px 14px",
-              borderTop: "1px solid var(--border-subtle)",
-              background: "rgba(0, 0, 0, 0.12)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              fontSize: "11px",
-              color: "var(--text-tertiary)",
+              padding: "5px 12px",
+              borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+              fontSize: "10.5px",
+              color: "rgba(255, 255, 255, 0.4)",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span>
-                <kbd style={{ background: "var(--bg-pill)", padding: "1px 4px", borderRadius: "3px" }}>↵</kbd> Open
-              </span>
-              <span>
-                <kbd style={{ background: "var(--bg-pill)", padding: "1px 4px", borderRadius: "3px" }}>↑↓</kbd> Navigate
-              </span>
-              <span>
-                <kbd style={{ background: "var(--bg-pill)", padding: "1px 4px", borderRadius: "3px" }}>Esc</kbd> Dismiss
-              </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span>{results.length} found</span>
+              {stats && <span>• {stats.total_items.toLocaleString()} indexed</span>}
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <button
-                onClick={() => setIsExpanded((prev) => !prev)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--accent)",
-                  fontWeight: 600,
-                  fontSize: "11px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
-                {isExpanded ? (
-                  <>
-                    <Minimize2 size={12} />
-                    <span>Collapse</span>
-                  </>
-                ) : (
-                  <>
-                    <Maximize2 size={12} />
-                    <span>Expand ({results.length})</span>
-                  </>
-                )}
-              </button>
+            <div className="no-drag" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span>↑↓ Navigate</span>
+              <span>↵ Open</span>
+              <span>Esc Close</span>
+
+              {results.length > 3 && (
+                <button
+                  onClick={() => setIsExpanded((prev) => !prev)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#38bdf8",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "2px",
+                    fontSize: "10.5px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {isExpanded ? <Minimize2 size={10} /> : <Maximize2 size={10} />}
+                </button>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* EMPTY RESULT STATE */}
-      {query.trim().length > 0 && results.length === 0 && !isLoading && (
+      {/* 2.5 SEARCHING STATE */}
+      {query.trim().length > 0 && isLoading && results.length === 0 && (
         <div
+          className="no-drag"
           style={{
-            borderTop: "1px solid var(--border-subtle)",
-            padding: "16px",
-            textAlign: "center",
+            padding: "16px 14px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+            background: "rgba(0, 0, 0, 0.12)",
+            color: "rgba(255, 255, 255, 0.65)",
             fontSize: "12.5px",
-            color: "var(--text-secondary)",
           }}
         >
-          <div>Nothing found for "{query}"</div>
-          <div style={{ fontSize: "11.5px", color: "var(--text-tertiary)", marginTop: "3px" }}>
-            Try describing the topic, site name, or when you visited it (e.g. "React yesterday").
-          </div>
+          <div
+            style={{
+              width: "13px",
+              height: "13px",
+              borderRadius: "50%",
+              border: "2px solid #38bdf8",
+              borderTopColor: "transparent",
+              animation: "spin 0.8s linear infinite",
+            }}
+          />
+          <span>Searching your memory…</span>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
 
-      <style>{`
-        @keyframes fadeInExpand {
-          from { opacity: 0; transform: translateY(-4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+      {/* 3. EMPTY STATE */}
+      {query.trim().length > 0 && results.length === 0 && !isLoading && (
+        <div
+          className="no-drag"
+          style={{
+            padding: "16px 14px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            gap: "4px",
+            borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+            background: "rgba(0, 0, 0, 0.12)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "rgba(255, 255, 255, 0.7)", fontSize: "13px", fontWeight: 600 }}>
+            <Search size={14} />
+            <span>Nothing found</span>
+          </div>
+          <span style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.4)" }}>
+            Try words, topic, or site you remember
+          </span>
+        </div>
+      )}
     </div>
   );
 };
+
+export default CompactAssistant;

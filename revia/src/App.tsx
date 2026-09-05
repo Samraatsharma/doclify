@@ -15,12 +15,141 @@ export const App: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [stats, setStats] = useState<MemoryStats | null>(null);
   const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
+  
+  // null = initializing/checking, true = show onboarding, false = returning user
+  const [isOnboarding, setIsOnboarding] = useState<boolean | null>(null);
 
   const searchTimeoutRef = useRef<number | null>(null);
+  const searchRequestIdRef = useRef<number>(0);
 
-  // Load initial settings and check onboarding status
+  // Synchronized search execution with stale-result invalidation and race-condition safety
+  const updateQueryAndSearch = useCallback(
+    (newQuery: string, immediate: boolean = false) => {
+      setQuery(newQuery);
+      // Immediately invalidate old results so they do not linger under a different query
+      setResults([]);
+
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = null;
+      }
+
+      const trimmed = newQuery.trim();
+      if (trimmed.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      const currentRequestId = ++searchRequestIdRef.current;
+
+      const runSearch = async () => {
+        try {
+          const items = await invoke<MemoryItem[]>("search_memory", {
+            query: trimmed,
+            limit: settings?.max_results ?? 20,
+          });
+          // Ensure this response matches the most recent search request
+          if (currentRequestId === searchRequestIdRef.current) {
+            setResults(items);
+            setIsLoading(false);
+          }
+        } catch (e) {
+          if (currentRequestId === searchRequestIdRef.current) {
+            console.error("Search error:", e);
+            setResults([]);
+            setIsLoading(false);
+          }
+        }
+      };
+
+      if (immediate) {
+        runSearch();
+      } else {
+        // 280ms debounce for typing and interim speech transcription
+        searchTimeoutRef.current = window.setTimeout(runSearch, 280);
+      }
+    },
+    [settings?.max_results]
+  );
+
+  // Native Speech Recognition hook with synchronized final and interim handlers
+  const {
+    isListening,
+    interimTranscript,
+    audioLevel,
+    error: voiceError,
+    startListening,
+    stopListening,
+    toggleListening,
+    openMicrophoneSettings,
+  } = useVoiceRecognition(
+    // onFinalResult: forced immediate search
+    (finalText) => {
+      if (finalText.trim().length > 0) {
+        updateQueryAndSearch(finalText, true);
+      }
+    },
+    // onInterimResult: debounced live search and real-time query update
+    (interimText) => {
+      if (interimText.trim().length > 0) {
+        updateQueryAndSearch(interimText, false);
+      }
+    }
+  );
+
+  // Clear session state and stop voice
+  const handleSessionEnd = useCallback(() => {
+    stopListening();
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+      searchTimeoutRef.current = null;
+    }
+    searchRequestIdRef.current++;
+    setQuery("");
+    setResults([]);
+    setIsLoading(false);
+    invoke("hide_search_window").catch(() => {});
+  }, [stopListening]);
+
+  // Start fresh search session (called on every summon)
+  const startNewSearchSession = useCallback(
+    (autoVoice: boolean = false) => {
+      // Clear all active query & result state
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = null;
+      }
+      searchRequestIdRef.current++;
+      setQuery("");
+      setResults([]);
+      setIsLoading(false);
+
+      if (autoVoice) {
+        // Double-Control ⌃⌃ shortcut: immediately activate listening mode
+        setTimeout(() => {
+          startListening().catch((e) => {
+            console.warn("Auto-start voice failed:", e);
+          });
+        }, 50);
+      } else {
+        stopListening();
+      }
+    },
+    [startListening, stopListening]
+  );
+
+  // Load initial settings and verify deterministic first-run onboarding state
   useEffect(() => {
+    invoke("log_frontend_event", {
+      event: "FRONTEND_LOADED",
+      details: "Revia frontend initialized",
+    }).catch(() => {});
+    invoke("log_frontend_event", {
+      event: "FRONTEND_MOUNTED",
+      details: "Revia React App mounted",
+    }).catch(() => {});
+
     const initApp = async () => {
       try {
         const loadedSettings = await invoke<AppSettings>("get_settings");
@@ -29,86 +158,63 @@ export const App: React.FC = () => {
         const loadedStats = await invoke<MemoryStats>("get_memory_stats");
         setStats(loadedStats);
 
-        const localCompleted = localStorage.getItem("revia_onboarding_completed") === "true";
-        if (!loadedSettings.has_completed_onboarding && !localCompleted) {
-          setShowOnboarding(true);
+        const isFirstRun = !loadedSettings.has_completed_onboarding;
+        setIsOnboarding(isFirstRun);
+
+        if (isFirstRun) {
+          invoke("position_setup_window").catch(() => {});
         } else {
-          // Pre-load recent items
-          executeSearch("");
+          // Returning user: start in clean idle state
+          invoke("position_capsule_window", { contentHeight: 52 }).catch(() => {});
+          startNewSearchSession(false);
         }
       } catch (e) {
         console.error("Initialization error:", e);
-        // Fallback: don't lock user into blank screen
-        executeSearch("");
+        setIsOnboarding(false);
+        invoke("position_capsule_window", { contentHeight: 52 }).catch(() => {});
+        startNewSearchSession(false);
       }
     };
 
     initApp();
-  }, []);
+  }, [startNewSearchSession]);
 
-  // Listen for native events from tray and shortcuts
+  // Listen for native events: start-new-session, session-ended, open-settings
   useEffect(() => {
+    const unlistenNewSession = listen<{ auto_voice?: boolean }>(
+      "start-new-session",
+      (event) => {
+        startNewSearchSession(event.payload?.auto_voice ?? false);
+      }
+    );
+
+    const unlistenSessionEnded = listen("session-ended", () => {
+      handleSessionEnd();
+    });
+
     const unlistenSettings = listen("open-settings", () => {
       setShowSettings(true);
     });
 
-    const unlistenShown = listen("window-shown", () => {
-      // Re-trigger empty search or keep existing query focused
-      invoke("position_near_top").catch(() => {});
-    });
-
     return () => {
+      unlistenNewSession.then((u) => u());
+      unlistenSessionEnded.then((u) => u());
       unlistenSettings.then((u) => u());
-      unlistenShown.then((u) => u());
     };
-  }, []);
+  }, [startNewSearchSession, handleSessionEnd]);
 
-  // Search execution
-  const executeSearch = useCallback(async (q: string) => {
-    setIsLoading(true);
-    try {
-      const items = await invoke<MemoryItem[]>("search_memory", {
-        query: q,
-        limit: settings?.max_results ?? 20,
-      });
-      setResults(items);
-    } catch (e) {
-      console.error("Search error:", e);
-      setResults([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [settings?.max_results]);
-
-  // Voice recognition hook
-  const {
-    isListening,
-    interimTranscript,
-    audioLevel,
-    toggleListening,
-  } = useVoiceRecognition((finalText) => {
-    if (finalText.trim().length > 0) {
-      setQuery(finalText);
-      executeSearch(finalText);
-    }
-  });
-
-  // Debounced search on query change (when not using voice)
+  // Typing search handler: keyboard input takes precedence, cancels voice if listening
   const handleQueryChange = (newQuery: string) => {
-    setQuery(newQuery);
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
+    if (isListening) {
+      stopListening();
     }
-
-    searchTimeoutRef.current = setTimeout(() => {
-      executeSearch(newQuery);
-    }, 120);
+    updateQueryAndSearch(newQuery, false);
   };
 
   const handleSelectResult = async (item: MemoryItem) => {
     try {
       await invoke("open_url", { url: item.url });
-      await invoke("hide_search_window");
+      handleSessionEnd();
     } catch (e) {
       console.error("Failed to open URL:", e);
     }
@@ -144,7 +250,9 @@ export const App: React.FC = () => {
       await invoke("ingest_chrome_history", { forceFull: false });
       const newStats = await invoke<MemoryStats>("get_memory_stats");
       setStats(newStats);
-      executeSearch(query);
+      if (query.trim().length > 0) {
+        updateQueryAndSearch(query, true);
+      }
     } catch (e) {
       console.error("Reindex error:", e);
     } finally {
@@ -159,15 +267,31 @@ export const App: React.FC = () => {
     } catch (e) {
       console.warn("Could not save onboarding flag:", e);
     }
-    setShowOnboarding(false);
-    executeSearch("");
+    setIsOnboarding(false);
+    invoke("position_capsule_window", { contentHeight: 52 }).catch(() => {});
+    invoke("hide_search_window").catch(() => {});
+    startNewSearchSession(false);
     const newStats = await invoke<MemoryStats>("get_memory_stats");
     setStats(newStats);
   };
 
   const handleResetOnboarding = () => {
-    setShowOnboarding(true);
+    setIsOnboarding(true);
+    invoke("position_setup_window").catch(() => {});
   };
+
+  // While checking initial onboarding status, show clean transparent shell
+  if (isOnboarding === null) {
+    return (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          background: "transparent",
+        }}
+      />
+    );
+  }
 
   return (
     <div
@@ -177,15 +301,16 @@ export const App: React.FC = () => {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "flex-start",
-        padding: "0",
+        justifyContent: isOnboarding ? "center" : "flex-start",
+        padding: isOnboarding ? "15px" : "10px",
         margin: "0",
         background: "transparent",
         boxSizing: "border-box",
         userSelect: "none",
+        overflow: "hidden",
       }}
     >
-      {showOnboarding ? (
+      {isOnboarding ? (
         <Onboarding
           onComplete={handleCompleteOnboarding}
           onClose={handleCompleteOnboarding}
@@ -200,10 +325,13 @@ export const App: React.FC = () => {
           isListening={isListening}
           interimTranscript={interimTranscript}
           audioLevel={audioLevel}
+          voiceError={voiceError}
+          onOpenMicrophoneSettings={openMicrophoneSettings}
           onToggleVoice={toggleListening}
           onSelectResult={handleSelectResult}
           onOpenSettings={() => setShowSettings(true)}
           onTogglePause={handleTogglePause}
+          onDismiss={handleSessionEnd}
           stats={stats}
         />
       )}
@@ -213,9 +341,8 @@ export const App: React.FC = () => {
           isOpen={showSettings}
           onClose={() => {
             setShowSettings(false);
-            // restore height for assistant
-            let targetHeight = 56;
-            if (results.length > 0) targetHeight = 330;
+            let targetHeight = 52;
+            if (results.length > 0) targetHeight = 290;
             invoke("set_window_height", { height: targetHeight }).catch(() => {});
           }}
           settings={settings}

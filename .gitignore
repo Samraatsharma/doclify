@@ -17,6 +17,7 @@ build/
 develop-eggs/
 dist/
 downloads/
+!website/public/downloads/
 eggs/
 .eggs/
 lib/
@@ -220,4 +221,10 @@ README-prev*.md
 # Frontend Dependencies
 frontend/node_modules/
 frontend/.vite/
+
+# FastEmbed Cache
+.fastembed_cache/
+revia/.fastembed_cache/
+revia/src-tauri/.fastembed_cache/
+portfolio-itom-main/
 

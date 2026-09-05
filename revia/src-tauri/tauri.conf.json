@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Revia",
-  "version": "1.0.1",
+  "version": "1.5.0",
   "identifier": "com.revia.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -14,17 +14,17 @@
       {
         "title": "Revia",
         "label": "main",
-        "width": 580,
-        "height": 56,
-        "minWidth": 460,
-        "minHeight": 56,
+        "width": 590,
+        "height": 470,
+        "minWidth": 380,
+        "minHeight": 52,
         "center": true,
         "resizable": true,
         "decorations": false,
         "transparent": true,
         "shadow": false,
         "alwaysOnTop": true,
-        "visible": true
+        "visible": false
       }
     ],
     "security": {
@@ -33,7 +33,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg"],
+    "targets": ["app"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -42,7 +42,16 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "minimumSystemVersion": "11.0"
+      "minimumSystemVersion": "11.0",
+      "infoPlist": "Info.plist"
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
+      }
     }
   }
 }

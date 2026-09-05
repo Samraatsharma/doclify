@@ -1,0 +1,12 @@
+# API Reference
+- `GET /api/health`: Health check.
+- `GET /api/models`: List available Groq models.
+- `POST /api/config/default-model`: Set default AI model.
+- `GET /api/projects`: List projects.
+- `POST /api/projects/create/local`: Init local project.
+- `POST /api/projects/create/upload`: Upload ZIP and init.
+- `POST /api/projects/create/github`: Clone repo and init.
+- `GET /api/projects/{project_id}`: Get project details.
+- `POST /api/projects/{project_id}/analyze`: Run pipeline (streams SSE progress).
+- `POST /api/projects/{project_id}/update-file`: Update a specific file.
+- `DELETE /api/projects/{project_id}`: Delete a project.
