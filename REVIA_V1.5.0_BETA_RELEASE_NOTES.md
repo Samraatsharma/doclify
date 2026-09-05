@@ -22,6 +22,7 @@ Revia v1.5.0 introduces cross-platform support, hybrid FTS5 + semantic vector se
 
 ### 1. macOS Release Package
 - **Filename**: `Revia_1.5.0_aarch64.zip`
+- **Public Download URL**: `https://revia-3v8.pages.dev/downloads/Revia_1.5.0_aarch64.zip`
 - **Target Architecture**: Apple Silicon (M1 / M2 / M3 / M4)
 - **File Size**: 14.1 MB (14,582,844 bytes)
 - **SHA-256 Checksum**: `5d193b00d72632c9627f1226d16429fe1378b18958483c34cc437d1e39a87914`
@@ -29,6 +30,7 @@ Revia v1.5.0 introduces cross-platform support, hybrid FTS5 + semantic vector se
 
 ### 2. Windows Release Package
 - **Filename**: `Revia_Windows_x64.zip`
+- **Public Download URL**: `https://revia-3v8.pages.dev/downloads/Revia_Windows_x64.zip`
 - **Target Architecture**: Windows 10 / 11 (64-bit x86_64)
 - **File Size**: 12.6 MB (13,242,179 bytes)
 - **SHA-256 Checksum**: `5819bda1a2fc9da3bef50a9ccd83dd5628a177fa5eb7be51e9f68e994af7490d`

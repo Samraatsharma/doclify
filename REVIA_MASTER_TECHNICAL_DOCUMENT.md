@@ -295,13 +295,16 @@
 
 ## W. DEPLOYMENT
 - **Build Output**: `website/dist`
-- **Status**: Production build complete and verified locally. Remote Cloudflare Pages static deployment configured; awaits authentication login/token.
+- **Hosting Provider**: Cloudflare Pages (`revia` project)
+- **Production Public URL**: `https://revia-3v8.pages.dev`
+- **Deployment Command**: `npx wrangler pages deploy dist --project-name=revia --branch=main`
+- **Deployment Verification**: Verified live HTTPS status 200 OK for homepage and both release ZIP downloads over global Cloudflare edge network.
 
 ---
 
 ## X. GITHUB
 - **Repository**: `https://github.com/Samraatsharma/doclify.git`
-- **Branch**: `main` (Ahead of origin by 2 local packaging commits).
+- **Branch**: `main` (Fully up to date with origin/main).
 
 ---
 
@@ -313,15 +316,16 @@
 5. Run `revia/scripts/package_windows.sh` to bundle `Revia.exe` + `README.txt` into `Revia_Windows_x64.zip` and deploy to website.
 6. Update `website/src/config.ts` with exact file sizes and SHA-256 checksums.
 7. Build website (`cd website && npm run build`).
-8. Deploy website static bundle to hosting provider.
+8. Deploy website static bundle to Cloudflare Pages (`npx wrangler pages deploy dist --project-name=revia`).
+9. Verify live HTTPS links and file SHA-256 hashes.
 
 ---
 
 ## Z. TESTING
 - **Rust Unit Tests**: Executed `cargo test` in `revia/src-tauri` -> 11 passed, 0 failed.
 - **ZIP Archive Integrity**: Executed `unzip -t` on both macOS and Windows ZIP release archives -> Passed with 0 errors.
-- **Website Live Links**: Tested HTTP status codes via `curl -I` on localhost preview -> HTTP 200 OK for both zip binaries.
-- **Browser Subagent**: Verified tab switching, checksum display, and responsive layout.
+- **Website Live Links**: Tested HTTP/2 status codes via `curl -sI` on live Cloudflare URL -> HTTP 200 OK for homepage and both zip binaries.
+- **Live File SHA-256 Verification**: Streamed live binaries from `https://revia-3v8.pages.dev/downloads/*.zip` -> Verified exact byte-for-byte checksum matches.
 
 ---
 
@@ -329,7 +333,7 @@
 1. **Windows Native Voice**: Voice dictation on Windows is currently stubbed (text search & global shortcut fully functional).
 2. **Windows Runtime Verification**: Physical runtime verification requires execution on native Windows 10/11 x64 hardware.
 3. **Apple Notarization**: macOS release is ad-hoc signed for free beta distribution; requires standard first-time Gatekeeper approval ("Open Anyway").
-4. **Windows SmartScreen**: Unsigned Windows beta display standard SmartScreen warning ("More info -> Run anyway").
+4. **Windows SmartScreen**: Unsigned Windows beta displays standard SmartScreen warning ("More info -> Run anyway").
 
 ---
 
@@ -392,7 +396,7 @@
 - **Cross-Compile Windows**: `PATH="/opt/homebrew/opt/llvm/bin:$PATH" cargo xwin build --target x86_64-pc-windows-msvc --release` (in `revia/src-tauri/`)
 - **Package Windows Release**: `./scripts/package_windows.sh` (in `revia/`)
 - **Build Website**: `npm run build` (in `website/`)
-- **Preview Website**: `npx vite preview --port 4173` (in `website/`)
+- **Deploy Cloudflare Pages**: `npx wrangler pages deploy dist --project-name=revia` (in `website/`)
 
 ---
 
@@ -407,6 +411,6 @@
 - **Revia Version**: 1.5.0 Public Beta
 - **macOS Status**: FROZEN BASELINE & VERIFIED PASS (`Revia_1.5.0_aarch64.zip`)
 - **Windows Status**: COMPILED & PACKAGED RELEASE (`Revia_Windows_x64.zip`)
-- **Website Status**: BUILT & VERIFIED (`website/dist`)
-- **Live Downloads**: Verified HTTP 200 OK locally for both binaries.
-- **Next Recommended Action**: Execute Cloudflare Pages deployment or push Git commits to GitHub repository.
+- **Website Status**: BUILT & DEPLOYED (`https://revia-3v8.pages.dev`)
+- **Live Downloads**: Verified HTTP 200 OK over live HTTPS for both binaries.
+- **Deployment Status**: DEPLOYMENT COMPLETE & VERIFIED PASS.
