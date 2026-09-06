@@ -24,6 +24,7 @@ interface CompactAssistantProps {
   onQueryChange: (q: string) => void;
   results: MemoryItem[];
   isLoading: boolean;
+  isIndexing?: boolean;
   isPaused: boolean;
   isListening: boolean;
   interimTranscript: string;
@@ -36,6 +37,7 @@ interface CompactAssistantProps {
   onTogglePause?: () => void;
   onDismiss?: () => void;
   stats: MemoryStats | null;
+  isSettingsOpen?: boolean;
 }
 
 export const CompactAssistant: React.FC<CompactAssistantProps> = ({
@@ -43,6 +45,7 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
   onQueryChange,
   results,
   isLoading,
+  isIndexing = false,
   isPaused,
   isListening,
   interimTranscript,
@@ -55,6 +58,7 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
   onTogglePause: _onTogglePause,
   onDismiss,
   stats,
+  isSettingsOpen = false,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
@@ -123,6 +127,8 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
 
   // Adjust native window height dynamically based on state
   useEffect(() => {
+    if (isSettingsOpen) return; // Do not shrink window if settings modal is open
+
     let extra = 0;
     if (!hasAccessibility) extra += 28;
     if (voiceError) extra += 28;
@@ -130,12 +136,12 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
     let targetHeight = 52 + extra;
     if (results.length > 0) {
       targetHeight = isExpanded ? 440 + extra : Math.min(320 + extra, 52 + extra + Math.min(results.length, 3) * 72 + 38);
-    } else if (query.trim().length > 0) {
-      // Accommodates either "Searching your memory..." indicator or "Nothing found"
-      targetHeight = 105 + extra;
+    } else if (query.trim().length > 0 || isIndexing) {
+      // Accommodates searching indicator, indexing indicator, or differentiated empty state
+      targetHeight = 110 + extra;
     }
     invoke("set_window_height", { height: targetHeight }).catch(() => {});
-  }, [results.length, isExpanded, query, isLoading, hasAccessibility, voiceError]);
+  }, [results.length, isExpanded, query, isLoading, isIndexing, hasAccessibility, voiceError, isSettingsOpen]);
 
   // Auto-scroll selected card into view
   useEffect(() => {
@@ -189,6 +195,9 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
     } else if (e.key === "Escape") {
       e.preventDefault();
       handleDismiss();
+    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "q") {
+      e.preventDefault();
+      invoke("exit_app").catch(() => {});
     } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "e") {
       e.preventDefault();
       setIsExpanded((prev) => !prev);
@@ -699,7 +708,7 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
         </div>
       )}
 
-      {/* 3. EMPTY STATE */}
+      {/* 3. DIFFERENTIATED EMPTY & STATUS STATES */}
       {query.trim().length > 0 && results.length === 0 && !isLoading && (
         <div
           className="no-drag"
@@ -715,13 +724,46 @@ export const CompactAssistant: React.FC<CompactAssistantProps> = ({
             background: "rgba(0, 0, 0, 0.12)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "rgba(255, 255, 255, 0.7)", fontSize: "13px", fontWeight: 600 }}>
-            <Search size={14} />
-            <span>Nothing found</span>
-          </div>
-          <span style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.4)" }}>
-            Try words, topic, or site you remember
-          </span>
+          {isIndexing ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#38bdf8", fontSize: "13px", fontWeight: 600 }}>
+                <div
+                  style={{
+                    width: "12px",
+                    height: "12px",
+                    borderRadius: "50%",
+                    border: "2px solid #38bdf8",
+                    borderTopColor: "transparent",
+                    animation: "spin 0.8s linear infinite",
+                  }}
+                />
+                <span>Memory is indexing...</span>
+              </div>
+              <span style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.45)" }}>
+                Reading new history items from Chrome
+              </span>
+            </>
+          ) : (!stats || stats.total_items === 0) ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#f59e0b", fontSize: "13px", fontWeight: 600 }}>
+                <Search size={14} />
+                <span>No browsing history found</span>
+              </div>
+              <span style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.45)" }}>
+                Visit websites in Chrome or check permissions in Settings
+              </span>
+            </>
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "rgba(255, 255, 255, 0.7)", fontSize: "13px", fontWeight: 600 }}>
+                <Search size={14} />
+                <span>No matches found</span>
+              </div>
+              <span style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.45)" }}>
+                No results for "{query.trim()}" in {stats.total_items.toLocaleString()} remembered pages
+              </span>
+            </>
+          )}
         </div>
       )}
     </div>

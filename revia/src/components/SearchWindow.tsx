@@ -88,6 +88,9 @@ export const SearchWindow: React.FC<SearchWindowProps> = ({
       } else {
         invoke("hide_search_window");
       }
+    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "q") {
+      e.preventDefault();
+      invoke("exit_app").catch(() => {});
     } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "c") {
       if (results.length > 0 && selectedIndex >= 0 && selectedIndex < results.length) {
         e.preventDefault();

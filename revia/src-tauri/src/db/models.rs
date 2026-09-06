@@ -70,3 +70,13 @@ pub struct SearchResultItem {
     pub score: f64,
     pub matched_terms: Vec<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserAccount {
+    pub id: String,
+    pub email: String,
+    pub name: Option<String>,
+    pub avatar_url: Option<String>,
+    pub google_id: Option<String>,
+    pub signed_in_at: i64,
+}

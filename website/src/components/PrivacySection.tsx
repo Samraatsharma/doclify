@@ -221,7 +221,7 @@ export const PrivacySection: React.FC = () => {
               <span>What Never Leaves Your Mac</span>
             </div>
             <p style={{ fontSize: "13.5px", color: "var(--text-secondary)", lineHeight: "1.6" }}>
-              Your browsing history, visited URLs, indexed page text, search queries, and local semantic embeddings are never uploaded to any remote server or ad broker. Revia does not maintain a cloud telemetry database.
+              Your memories stay on your computer. Your browsing history, visited URLs, indexed page text, search queries, and local semantic embeddings are never uploaded to any remote server or ad broker. Optional product analytics are separate from your private memories.
             </p>
           </div>
 

@@ -21,7 +21,7 @@ const FAQS: FAQItem[] = [
   },
   {
     q: "Does Revia upload my browsing history to the cloud?",
-    a: "No. Revia never uploads your browsing history, page titles, or search queries to any cloud database or telemetry service. Revia does not even require an account to use.",
+    a: "No. Your memories stay on your computer. Revia never uploads your browsing history, page titles, or search queries to any cloud database. Optional product analytics are separate from your private memories.",
   },
   {
     q: "Does Revia require an OpenAI or third-party AI API key?",

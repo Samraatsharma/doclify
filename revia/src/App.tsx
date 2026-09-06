@@ -66,8 +66,8 @@ export const App: React.FC = () => {
       if (immediate) {
         runSearch();
       } else {
-        // 280ms debounce for typing and interim speech transcription
-        searchTimeoutRef.current = window.setTimeout(runSearch, 280);
+        // 120ms debounce for instantaneous typing and interim speech transcription
+        searchTimeoutRef.current = window.setTimeout(runSearch, 120);
       }
     },
     [settings?.max_results]
@@ -135,9 +135,29 @@ export const App: React.FC = () => {
       } else {
         stopListening();
       }
+
+      // Proactively refresh memory stats on each session summon
+      invoke<MemoryStats>("get_memory_stats")
+        .then((s) => setStats(s))
+        .catch(() => {});
     },
     [startListening, stopListening]
   );
+
+  // Global window keyboard listener for immediate Escape and Cmd+Q handling
+  useEffect(() => {
+    const handleGlobalWindowKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleSessionEnd();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "q") {
+        e.preventDefault();
+        invoke("exit_app").catch(() => {});
+      }
+    };
+    window.addEventListener("keydown", handleGlobalWindowKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", handleGlobalWindowKeyDown, { capture: true });
+  }, [handleSessionEnd]);
 
   // Load initial settings and verify deterministic first-run onboarding state
   useEffect(() => {
@@ -179,7 +199,7 @@ export const App: React.FC = () => {
     initApp();
   }, [startNewSearchSession]);
 
-  // Listen for native events: start-new-session, session-ended, open-settings
+  // Listen for native events: start-new-session, session-ended, open-settings, memory-updated
   useEffect(() => {
     const unlistenNewSession = listen<{ auto_voice?: boolean }>(
       "start-new-session",
@@ -196,10 +216,20 @@ export const App: React.FC = () => {
       setShowSettings(true);
     });
 
+    const unlistenMemoryUpdated = listen("memory-updated", async () => {
+      try {
+        const updatedStats = await invoke<MemoryStats>("get_memory_stats");
+        setStats(updatedStats);
+      } catch (e) {
+        console.warn("Failed to refresh stats on memory update:", e);
+      }
+    });
+
     return () => {
       unlistenNewSession.then((u) => u());
       unlistenSessionEnded.then((u) => u());
       unlistenSettings.then((u) => u());
+      unlistenMemoryUpdated.then((u) => u());
     };
   }, [startNewSearchSession, handleSessionEnd]);
 
@@ -321,6 +351,7 @@ export const App: React.FC = () => {
           onQueryChange={handleQueryChange}
           results={results}
           isLoading={isLoading}
+          isIndexing={isIndexing}
           isPaused={settings?.is_paused ?? false}
           isListening={isListening}
           interimTranscript={interimTranscript}
@@ -333,6 +364,7 @@ export const App: React.FC = () => {
           onTogglePause={handleTogglePause}
           onDismiss={handleSessionEnd}
           stats={stats}
+          isSettingsOpen={showSettings}
         />
       )}
 

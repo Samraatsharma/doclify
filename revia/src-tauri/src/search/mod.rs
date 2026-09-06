@@ -269,12 +269,25 @@ pub fn search(
     let mut candidate_items = match db.search_fts(&fts_query, parsed.start_time, parsed.end_time, limit * 3) {
         Ok(results) if !results.is_empty() => results,
         _ => {
-            db.search_fallback_like(
-                &parsed.search_terms,
-                parsed.start_time,
-                parsed.end_time,
-                limit * 3,
-            ).unwrap_or_default()
+            if fts_terms.len() > 1 {
+                let or_query = fts_terms.join(" OR ");
+                match db.search_fts(&or_query, parsed.start_time, parsed.end_time, limit * 3) {
+                    Ok(results) if !results.is_empty() => results,
+                    _ => db.search_fallback_like(
+                        &parsed.search_terms,
+                        parsed.start_time,
+                        parsed.end_time,
+                        limit * 3,
+                    ).unwrap_or_default(),
+                }
+            } else {
+                db.search_fallback_like(
+                    &parsed.search_terms,
+                    parsed.start_time,
+                    parsed.end_time,
+                    limit * 3,
+                ).unwrap_or_default()
+            }
         }
     };
 

@@ -47,3 +47,18 @@ export interface ChromeAccessStatus {
   item_count: number | null;
   error_message: string | null;
 }
+
+export interface UserAccount {
+  id: string;
+  email: string;
+  name?: string;
+  avatar_url?: string;
+  google_id?: string;
+  signed_in_at: number;
+}
+
+export interface AuthStatusResponse {
+  is_configured: boolean;
+  account: UserAccount | null;
+  message?: string;
+}

@@ -40,7 +40,7 @@ export const PrivacyArchitecture: React.FC = () => {
           <h2 className="headline-editorial" style={{ color: "#ffffff", marginBottom: "20px" }}>
             Your computer is the vault.
             <br />
-            <span className="serif-italic" style={{ color: "#a7f3d0" }}>Zero cloud dependencies. Zero telemetry.</span>
+            <span className="serif-italic" style={{ color: "#a7f3d0" }}>Your memories stay on your computer.</span>
           </h2>
 
           <p className="lead-paragraph-dark" style={{ maxWidth: "660px", margin: "0 auto" }}>

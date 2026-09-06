@@ -1,6 +1,6 @@
 use rusqlite::{Connection, Result};
 
-pub const CURRENT_SCHEMA_VERSION: i32 = 2;
+pub const CURRENT_SCHEMA_VERSION: i32 = 3;
 
 pub fn run_migrations(conn: &Connection) -> Result<()> {
     conn.execute_batch(
@@ -19,6 +19,10 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
 
     if current_version < 2 {
         apply_migration_v2(conn)?;
+    }
+
+    if current_version < 3 {
+        apply_migration_v3(conn)?;
     }
 
     Ok(())
@@ -144,6 +148,26 @@ fn apply_migration_v2(conn: &Connection) -> Result<()> {
 
         INSERT INTO schema_migrations (version, applied_at)
         VALUES (2, datetime('now'));
+        "
+    )?;
+
+    Ok(())
+}
+
+fn apply_migration_v3(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "
+        CREATE TABLE IF NOT EXISTS user_account (
+            id TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            name TEXT,
+            avatar_url TEXT,
+            google_id TEXT,
+            signed_in_at INTEGER NOT NULL
+        );
+
+        INSERT INTO schema_migrations (version, applied_at)
+        VALUES (3, datetime('now'));
         "
     )?;
 

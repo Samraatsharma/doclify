@@ -472,6 +472,53 @@ impl Database {
         }
         Ok(items)
     }
+
+    pub fn get_user_account(&self) -> Result<Option<models::UserAccount>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, email, name, avatar_url, google_id, signed_in_at FROM user_account LIMIT 1"
+        )?;
+        let mut rows = stmt.query_map([], |row| {
+            Ok(models::UserAccount {
+                id: row.get(0)?,
+                email: row.get(1)?,
+                name: row.get(2)?,
+                avatar_url: row.get(3)?,
+                google_id: row.get(4)?,
+                signed_in_at: row.get(5)?,
+            })
+        })?;
+
+        if let Some(row) = rows.next() {
+            Ok(Some(row?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn save_user_account(&self, account: &models::UserAccount) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM user_account", [])?;
+        conn.execute(
+            "INSERT INTO user_account (id, email, name, avatar_url, google_id, signed_in_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![
+                account.id,
+                account.email,
+                account.name,
+                account.avatar_url,
+                account.google_id,
+                account.signed_in_at
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn clear_user_account(&self) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM user_account", [])?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

@@ -23,6 +23,13 @@ impl SemanticEngine {
         engine
     }
 
+    pub fn new_empty() -> Arc<Self> {
+        Arc::new(Self {
+            model: Mutex::new(None),
+            is_initializing: Mutex::new(false),
+        })
+    }
+
     fn init_model(&self) {
         {
             let mut init_flag = self.is_initializing.lock().unwrap();

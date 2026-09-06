@@ -48,10 +48,37 @@ void mac_open_privacy_settings(const char *pane) {
     }
 }
 
+#import <objc/runtime.h>
+
+static BOOL Swizzled_canBecomeKeyWindow(id self, SEL _cmd) {
+    return YES;
+}
+
+static BOOL Swizzled_canBecomeMainWindow(id self, SEL _cmd) {
+    return YES;
+}
+
 void mac_configure_transparent_window(void *ns_window_ptr) {
     if (!ns_window_ptr) return;
     NSWindow *window = (__bridge NSWindow *)ns_window_ptr;
     void (^block)(void) = ^{
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            Class cls = [window class];
+            Method m1 = class_getInstanceMethod(cls, @selector(canBecomeKeyWindow));
+            if (m1) {
+                class_replaceMethod(cls, @selector(canBecomeKeyWindow), (IMP)Swizzled_canBecomeKeyWindow, "c@:");
+            } else {
+                class_addMethod(cls, @selector(canBecomeKeyWindow), (IMP)Swizzled_canBecomeKeyWindow, "c@:");
+            }
+            Method m2 = class_getInstanceMethod(cls, @selector(canBecomeMainWindow));
+            if (m2) {
+                class_replaceMethod(cls, @selector(canBecomeMainWindow), (IMP)Swizzled_canBecomeMainWindow, "c@:");
+            } else {
+                class_addMethod(cls, @selector(canBecomeMainWindow), (IMP)Swizzled_canBecomeMainWindow, "c@:");
+            }
+        });
+
         [window setOpaque:NO];
         [window setBackgroundColor:[NSColor clearColor]];
         [window setHasShadow:NO];
@@ -188,9 +215,9 @@ void mac_anchor_window_top_right(void *ns_window_ptr, double target_width, doubl
         [window setFrame:newFrame display:YES animate:NO];
         [window setCollectionBehavior:NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorFullScreenAuxiliary | NSWindowCollectionBehaviorIgnoresCycle];
         [window setLevel:NSStatusWindowLevel];
-        [window setIsVisible:YES];
-        [window orderFrontRegardless];
-        [window makeKeyAndOrderFront:nil];
+        if ([window isVisible]) {
+            [window orderFrontRegardless];
+        }
     };
     if ([NSThread isMainThread]) {
         block();
@@ -345,5 +372,77 @@ void mac_start_speech_recognition(void (*on_transcript)(const char *text, bool i
             }
         }];
     }
+}
+
+static id g_globalFlagsMonitor = nil;
+static id g_localFlagsMonitor = nil;
+static int64_t g_lastCtrlReleaseTime = 0;
+static BOOL g_ctrlWasDown = NO;
+static void (*g_shortcutCallback)(void) = NULL;
+
+void mac_install_modifier_monitor(void (*callback)(void)) {
+    g_shortcutCallback = callback;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (g_globalFlagsMonitor) return;
+        
+        void (^flagsHandler)(NSEvent *) = ^(NSEvent *event) {
+            NSEventModifierFlags flags = [event modifierFlags];
+            unsigned short keyCode = [event keyCode];
+            BOOL isCtrlKey = (keyCode == 59 || keyCode == 62);
+            BOOL hasCtrlFlag = (flags & NSEventModifierFlagControl) != 0;
+            
+            // Exclude other modifiers (Cmd, Alt, Shift)
+            NSEventModifierFlags otherMask = NSEventModifierFlagCommand | NSEventModifierFlagOption | NSEventModifierFlagShift;
+            if ((flags & otherMask) != 0) {
+                g_ctrlWasDown = NO;
+                g_lastCtrlReleaseTime = 0;
+                return;
+            }
+            
+            if (isCtrlKey || (hasCtrlFlag != g_ctrlWasDown)) {
+                int64_t now = (int64_t)([[NSDate date] timeIntervalSince1970] * 1000.0);
+                if (hasCtrlFlag) {
+                    if (!g_ctrlWasDown) {
+                        g_ctrlWasDown = YES;
+                        int64_t diff = now - g_lastCtrlReleaseTime;
+                        if (diff >= 40 && diff <= 650) {
+                            g_lastCtrlReleaseTime = 0;
+                            if (g_shortcutCallback) {
+                                g_shortcutCallback();
+                            }
+                        }
+                    }
+                } else {
+                    if (g_ctrlWasDown) {
+                        g_ctrlWasDown = NO;
+                        g_lastCtrlReleaseTime = now;
+                    }
+                }
+            }
+        };
+
+        g_globalFlagsMonitor = [NSEvent addGlobalMonitorForEventsMatchingMask:NSEventMaskFlagsChanged handler:flagsHandler];
+        g_localFlagsMonitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskFlagsChanged handler:^NSEvent *(NSEvent *event) {
+            flagsHandler(event);
+            return event;
+        }];
+    });
+}
+
+static void (*g_dismissCallback)(void) = NULL;
+
+void mac_set_dismiss_callback(void (*callback)(void)) {
+    g_dismissCallback = callback;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown handler:^NSEvent *(NSEvent *event) {
+            if ([event keyCode] == 53) { // Escape
+                if (g_dismissCallback) {
+                    g_dismissCallback();
+                    return nil; // Consume Escape
+                }
+            }
+            return event;
+        }];
+    });
 }
 

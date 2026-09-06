@@ -110,7 +110,7 @@ $$\text{FinalScore} = 0.6 \times \text{Norm}(\text{BM25Score}) + 0.4 \times \tex
 - **Local Application Data**: Encrypted SQLite database stored strictly inside standard OS user directories:
   - macOS: `~/Library/Application Support/com.revia.app/revia_memory.db`
   - Windows: `%APPDATA%\com.revia.app\revia_memory.db`
-- **Zero Telemetry**: No tracking pixels, analytics scripts, or remote logging beacons.
+- **Your memories stay on your computer**: No tracking pixels or remote logging beacons. Optional product analytics are separate from your private memories.
 
 ---
 

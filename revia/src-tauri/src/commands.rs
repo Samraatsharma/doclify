@@ -147,6 +147,7 @@ pub fn hide_search_window(app: AppHandle) -> Result<(), String> {
     let _ = app.run_on_main_thread(move || {
         if let Some(window) = app_clone.get_webview_window("main") {
             let _ = window.hide();
+            log_runtime("SESSION_HIDDEN", "Capsule hidden via hide command.");
         }
     });
     Ok(())
@@ -588,4 +589,11 @@ pub fn check_is_first_run(state: State<'_, AppState>) -> bool {
     let settings = load_settings(&state.db);
     !settings.has_completed_onboarding
 }
+
+#[tauri::command]
+pub fn exit_app(app: AppHandle) {
+    log_runtime("APP_TERMINATING", "Exit requested (Cmd+Q / quit)");
+    app.exit(0);
+}
+
 

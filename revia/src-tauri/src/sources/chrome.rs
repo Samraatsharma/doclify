@@ -230,6 +230,40 @@ mod hex {
     }
 }
 
+fn copy_sqlite_file_safe(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
+    fs::copy(src, dst)?;
+    let src_str = src.to_string_lossy();
+    let dst_str = dst.to_string_lossy();
+
+    let src_wal = PathBuf::from(format!("{}-wal", src_str));
+    if src_wal.exists() {
+        let dst_wal = PathBuf::from(format!("{}-wal", dst_str));
+        let _ = fs::copy(&src_wal, &dst_wal);
+    }
+
+    let src_journal = PathBuf::from(format!("{}-journal", src_str));
+    if src_journal.exists() {
+        let dst_journal = PathBuf::from(format!("{}-journal", dst_str));
+        let _ = fs::copy(&src_journal, &dst_journal);
+    }
+
+    let src_shm = PathBuf::from(format!("{}-shm", src_str));
+    if src_shm.exists() {
+        let dst_shm = PathBuf::from(format!("{}-shm", dst_str));
+        let _ = fs::copy(&src_shm, &dst_shm);
+    }
+
+    Ok(())
+}
+
+fn remove_sqlite_file_safe(dst: &PathBuf) {
+    let dst_str = dst.to_string_lossy();
+    let _ = fs::remove_file(dst);
+    let _ = fs::remove_file(PathBuf::from(format!("{}-wal", dst_str)));
+    let _ = fs::remove_file(PathBuf::from(format!("{}-journal", dst_str)));
+    let _ = fs::remove_file(PathBuf::from(format!("{}-shm", dst_str)));
+}
+
 impl MemorySourceTrait for ChromeHistorySource {
     fn source_id(&self) -> &str {
         "chrome_history"
@@ -257,8 +291,8 @@ impl MemorySourceTrait for ChromeHistorySource {
         let temp_path = std::env::temp_dir()
             .join(format!("revia_chrome_check_{}.db", std::process::id()));
 
-        // Try safe copy and read
-        if let Err(e) = fs::copy(primary_path, &temp_path) {
+        // Try safe copy with WAL / journal handling and read
+        if let Err(e) = copy_sqlite_file_safe(primary_path, &temp_path) {
             return ChromeAccessStatus {
                 accessible: false,
                 path: primary_path.to_string_lossy().to_string(),
@@ -281,7 +315,7 @@ impl MemorySourceTrait for ChromeHistorySource {
             Ok(count)
         })();
 
-        let _ = fs::remove_file(&temp_path);
+        remove_sqlite_file_safe(&temp_path);
 
         match result {
             Ok(count) => ChromeAccessStatus {
@@ -313,7 +347,51 @@ impl MemorySourceTrait for ChromeHistorySource {
         } else {
             db.get_ingestion_marker(self.source_id()).unwrap_or(0)
         };
-        let marker_chrome_time = Self::unix_millis_to_chrome_time(marker_unix_ms);
+
+        // If not force_full and we already have an ingestion marker, check if any file has been modified
+        if !force_full && marker_unix_ms > 0 {
+            let has_changes = paths.iter().any(|p| {
+                let wal = PathBuf::from(format!("{}-wal", p.display()));
+                let journal = PathBuf::from(format!("{}-journal", p.display()));
+                if wal.exists() || journal.exists() {
+                    return true;
+                }
+                if let Ok(meta) = fs::metadata(p) {
+                    if let Ok(mtime) = meta.modified() {
+                        if let Ok(d) = mtime.duration_since(std::time::UNIX_EPOCH) {
+                            return (d.as_millis() as i64) >= (marker_unix_ms - 2000);
+                        }
+                    }
+                }
+                false
+            });
+
+            if !has_changes {
+                let stats = db.get_memory_stats(false).unwrap_or(crate::db::models::MemoryStats {
+                    total_items: 0,
+                    total_visits: 0,
+                    last_ingested_at: Some(marker_unix_ms),
+                    is_paused: false,
+                    database_path: String::new(),
+                    database_size_bytes: 0,
+                });
+                return Ok(IngestionStats {
+                    source_id: self.source_id().to_string(),
+                    items_indexed: 0,
+                    visits_indexed: 0,
+                    duration_ms: start_time.elapsed().as_millis(),
+                    total_stored_items: stats.total_items as usize,
+                });
+            }
+        }
+
+        // 5-second overlap window to avoid dropping visits near microsecond conversion boundaries
+        let query_since_ms = if force_full {
+            0
+        } else {
+            (marker_unix_ms - 5000).max(0)
+        };
+        let marker_chrome_time = Self::unix_millis_to_chrome_time(query_since_ms);
 
         let mut total_items_indexed = 0;
         let mut total_visits_indexed = 0;
@@ -327,7 +405,7 @@ impl MemorySourceTrait for ChromeHistorySource {
             );
             let temp_path = std::env::temp_dir().join(format!("{}.db", temp_id));
 
-            if let Err(e) = fs::copy(&history_path, &temp_path) {
+            if let Err(e) = copy_sqlite_file_safe(&history_path, &temp_path) {
                 eprintln!("Failed to copy Chrome history from {:?}: {}", history_path, e);
                 continue;
             }
@@ -352,6 +430,8 @@ impl MemorySourceTrait for ChromeHistorySource {
 
                 let mut items = Vec::new();
                 let mut visits = Vec::new();
+                let mut profile_visits_indexed = 0;
+                let mut profile_new_items_indexed = 0;
                 let mut local_max_time = marker_unix_ms;
 
                 while let Some(row) = rows.next().map_err(|e| format!("Row read failed: {}", e))? {
@@ -380,6 +460,10 @@ impl MemorySourceTrait for ChromeHistorySource {
                     let last_visit_ms = Self::chrome_time_to_unix_millis(last_visit_chrome);
                     if last_visit_ms > local_max_time {
                         local_max_time = last_visit_ms;
+                    }
+
+                    if last_visit_ms > marker_unix_ms || force_full {
+                        profile_new_items_indexed += 1;
                     }
 
                     let clean_title = if raw_title.trim().is_empty() {
@@ -421,6 +505,7 @@ impl MemorySourceTrait for ChromeHistorySource {
 
                     // Flush in chunks of 500
                     if items.len() >= 500 {
+                        profile_visits_indexed += visits.len();
                         db.batch_upsert_items_and_visits(&items, &visits)
                             .map_err(|e| format!("Batch upsert failed: {}", e))?;
                         items.clear();
@@ -429,14 +514,15 @@ impl MemorySourceTrait for ChromeHistorySource {
                 }
 
                 if !items.is_empty() {
+                    profile_visits_indexed += visits.len();
                     db.batch_upsert_items_and_visits(&items, &visits)
                         .map_err(|e| format!("Final batch upsert failed: {}", e))?;
                 }
 
-                Ok((items.len(), visits.len(), local_max_time))
+                Ok((profile_new_items_indexed, profile_visits_indexed, local_max_time))
             })();
 
-            let _ = fs::remove_file(&temp_path);
+            remove_sqlite_file_safe(&temp_path);
 
             match result {
                 Ok((items_count, visits_count, local_max)) => {
@@ -521,7 +607,7 @@ mod tests {
                 stats.total_stored_items, stats.duration_ms
             );
 
-            let semantic_engine = crate::search::semantic::SemanticEngine::new();
+            let semantic_engine = crate::search::semantic::SemanticEngine::new_empty();
             let search_results =
                 crate::search::search(&db, &semantic_engine, "instagram", 5)
                     .expect("Search failed");

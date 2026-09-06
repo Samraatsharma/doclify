@@ -144,7 +144,7 @@ pub fn start_modifier_listener(app: AppHandle, target: ModifierTarget) {
 
         const K_CG_EVENT_FLAGS_CHANGED: u32 = 12;
         const K_CG_EVENT_KEY_DOWN: u32 = 10;
-        const K_CG_SESSION_EVENT_TAP: u32 = 1;
+        const K_CG_SESSION_EVENT_TAP: u32 = 1; // Session event tap for macOS user-space Accessibility
         const K_CG_HEAD_INSERT_EVENT_TAP: u32 = 0;
         const K_CG_EVENT_TAP_OPTION_LISTEN_ONLY: u32 = 1;
 
@@ -170,6 +170,7 @@ pub fn start_modifier_listener(app: AppHandle, target: ModifierTarget) {
             ) -> *mut c_void;
 
             fn CGEventTapEnable(tap: *mut c_void, enable: bool);
+            fn CGEventTapIsEnabled(tap: *mut c_void) -> bool;
             fn CGEventGetFlags(event: CGEventRef) -> u64;
             fn CGEventGetIntegerValueField(event: CGEventRef, field: u32) -> i64;
             fn CFMachPortCreateRunLoopSource(
@@ -198,6 +199,7 @@ pub fn start_modifier_listener(app: AppHandle, target: ModifierTarget) {
             target_mask: u64,
             was_down: bool,
             last_release_time: i64,
+            just_triggered: bool,
             tap_port: *mut c_void,
         }
 
@@ -206,11 +208,12 @@ pub fn start_modifier_listener(app: AppHandle, target: ModifierTarget) {
             target_mask: target_flag_mask,
             was_down: false,
             last_release_time: 0,
+            just_triggered: false,
             tap_port: std::ptr::null_mut(),
         }));
 
         extern "C" fn tap_callback(
-            proxy: CGEventTapProxy,
+            _proxy: CGEventTapProxy,
             event_type: CGEventType,
             event: CGEventRef,
             refcon: *mut c_void,
@@ -220,22 +223,21 @@ pub fn start_modifier_listener(app: AppHandle, target: ModifierTarget) {
             }
             let ctx = unsafe { &mut *(refcon as *mut TapContext) };
 
-            // Re-enable tap if disabled by system timeout
+            // Re-enable tap immediately if disabled by macOS timeout (0xFFFFFFFE) or user input (0xFFFFFFFF)
+            // Crucial: do NOT perform any disk logging or blocking operations here.
             if event_type == 0xFFFFFFFE || event_type == 0xFFFFFFFF {
-                log_diagnostic("[EVENT TAP] Tap disabled by macOS, re-enabling...");
                 if !ctx.tap_port.is_null() {
                     unsafe { CGEventTapEnable(ctx.tap_port, true) };
-                } else if !proxy.is_null() {
-                    unsafe { CGEventTapEnable(proxy as *mut c_void, true) };
                 }
                 return event;
             }
 
             // If an ordinary key is pressed in between, reset double tap state
             if event_type == K_CG_EVENT_KEY_DOWN {
-                if ctx.was_down || ctx.last_release_time > 0 {
+                if ctx.was_down || ctx.last_release_time > 0 || ctx.just_triggered {
                     ctx.last_release_time = 0;
                     ctx.was_down = false;
+                    ctx.just_triggered = false;
                 }
                 return event;
             }
@@ -251,9 +253,10 @@ pub fn start_modifier_listener(app: AppHandle, target: ModifierTarget) {
                 // Ensure other modifiers (Cmd, Alt, Shift) are not held during Control double-tap
                 let other_mask = K_CG_EVENT_FLAG_MASK_COMMAND | K_CG_EVENT_FLAG_MASK_ALTERNATE | K_CG_EVENT_FLAG_MASK_SHIFT;
                 if (flags & other_mask) != 0 {
-                    if ctx.was_down || ctx.last_release_time > 0 {
+                    if ctx.was_down || ctx.last_release_time > 0 || ctx.just_triggered {
                         ctx.last_release_time = 0;
                         ctx.was_down = false;
+                        ctx.just_triggered = false;
                     }
                     return event;
                 }
@@ -268,31 +271,32 @@ pub fn start_modifier_listener(app: AppHandle, target: ModifierTarget) {
                         if !ctx.was_down {
                             ctx.was_down = true;
                             let diff = t - ctx.last_release_time;
-                            crate::commands::log_runtime(
-                                "SHORTCUT_KEY_DOWN",
-                                &format!("Control down (diff={}ms, keycode={})", diff, keycode),
-                            );
 
                             // Double tap cadence: 40ms to 650ms
                             if diff >= 40 && diff <= 650 {
-                                crate::commands::log_runtime(
-                                    "SHORTCUT_TRIGGERED",
-                                    "Double-Control (⌃ ⌃) detected! Invoking capsule with voice...",
-                                );
                                 ctx.last_release_time = 0;
+                                ctx.just_triggered = true;
                                 let app = ctx.app.clone();
-                                crate::handle_double_control_shortcut(&app);
+                                // Offload execution completely off the realtime event tap thread
+                                std::thread::spawn(move || {
+                                    crate::commands::log_runtime(
+                                        "SHORTCUT_TRIGGERED",
+                                        "Double-Control (⌃ ⌃) detected! Invoking capsule with voice...",
+                                    );
+                                    crate::handle_double_control_shortcut(&app);
+                                });
                             }
                         }
                     } else {
                         // Physical release UP
                         if ctx.was_down {
                             ctx.was_down = false;
-                            ctx.last_release_time = t;
-                            crate::commands::log_runtime(
-                                "SHORTCUT_KEY_UP",
-                                &format!("Control up (keycode={})", keycode),
-                            );
+                            if ctx.just_triggered {
+                                ctx.just_triggered = false;
+                                ctx.last_release_time = 0;
+                            } else {
+                                ctx.last_release_time = t;
+                            }
                         }
                     }
                 }
@@ -302,6 +306,7 @@ pub fn start_modifier_listener(app: AppHandle, target: ModifierTarget) {
         }
 
         let events_mask = (1u64 << K_CG_EVENT_FLAGS_CHANGED) | (1u64 << K_CG_EVENT_KEY_DOWN);
+        // Use K_CG_SESSION_EVENT_TAP (1) for macOS user-space Accessibility event tap
         let mut tap = unsafe {
             CGEventTapCreate(
                 K_CG_SESSION_EVENT_TAP,
@@ -313,33 +318,33 @@ pub fn start_modifier_listener(app: AppHandle, target: ModifierTarget) {
             )
         };
 
-        if tap.is_null() {
+        let is_trusted = check_accessibility();
+        if !is_trusted || tap.is_null() {
+            crate::commands::request_accessibility_permission();
             crate::commands::log_runtime(
                 "SHORTCUT_INITIALIZATION_START",
-                "Accessibility permission required for Double-Control. Waiting for permission in background...",
+                "Accessibility permission not yet active. Prompt requested. Waiting for permission in background...",
             );
 
             // Indefinite background retry loop: seamlessly attaches as soon as permission is granted
             loop {
                 std::thread::sleep(std::time::Duration::from_millis(1500));
-                if check_accessibility() {
-                    tap = unsafe {
-                        CGEventTapCreate(
-                            K_CG_SESSION_EVENT_TAP,
-                            K_CG_HEAD_INSERT_EVENT_TAP,
-                            K_CG_EVENT_TAP_OPTION_LISTEN_ONLY,
-                            events_mask,
-                            tap_callback,
-                            ctx as *mut c_void,
-                        )
-                    };
-                    if !tap.is_null() {
-                        crate::commands::log_runtime(
-                            "SHORTCUT_INITIALIZATION_COMPLETE",
-                            "Accessibility permission granted! Event tap attached successfully.",
-                        );
-                        break;
-                    }
+                tap = unsafe {
+                    CGEventTapCreate(
+                        K_CG_SESSION_EVENT_TAP,
+                        K_CG_HEAD_INSERT_EVENT_TAP,
+                        K_CG_EVENT_TAP_OPTION_LISTEN_ONLY,
+                        events_mask,
+                        tap_callback,
+                        ctx as *mut c_void,
+                    )
+                };
+                if !tap.is_null() {
+                    crate::commands::log_runtime(
+                        "SHORTCUT_INITIALIZATION_COMPLETE",
+                        "Accessibility permission granted! Event tap attached successfully.",
+                    );
+                    break;
                 }
             }
         }
@@ -351,10 +356,30 @@ pub fn start_modifier_listener(app: AppHandle, target: ModifierTarget) {
                 let current_loop = CFRunLoopGetCurrent();
                 CFRunLoopAddSource(current_loop, run_loop_source, kCFRunLoopDefaultMode);
                 CFRunLoopAddSource(current_loop, run_loop_source, kCFRunLoopCommonModes);
+                CGEventTapEnable(tap, true);
                 crate::commands::log_runtime(
                     "SHORTCUT_INITIALIZATION_COMPLETE",
-                    "Event tap running on CFRunLoop (default & common modes). Listening for ⌃ ⌃.",
+                    "Hardware event tap running on CFRunLoop (default & common modes). Listening for ⌃ ⌃.",
                 );
+
+                // Active Watchdog Thread: polls every 500ms and re-enables tap if macOS ever flags it disabled
+                let watchdog_ctx = ctx as usize;
+                std::thread::spawn(move || {
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                        let raw_ptr = watchdog_ctx as *mut TapContext;
+                        if !raw_ptr.is_null() {
+                            let port = (*raw_ptr).tap_port;
+                            if !port.is_null() {
+                                let is_enabled = CGEventTapIsEnabled(port);
+                                if !is_enabled {
+                                    CGEventTapEnable(port, true);
+                                }
+                            }
+                        }
+                    }
+                });
+
                 CFRunLoopRun();
                 crate::commands::log_runtime("WARNING", "CFRunLoopRun() exited unexpectedly!");
             } else {

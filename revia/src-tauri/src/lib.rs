@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod commands;
 pub mod db;
 pub mod modifier_tap;
@@ -84,16 +85,86 @@ fn current_time_ms() -> i64 {
         .unwrap_or(0)
 }
 
-pub fn handle_double_control_shortcut(app: &AppHandle) {
+pub fn trigger_background_sync(app: &AppHandle) {
     let app_handle = app.clone();
+    std::thread::spawn(move || {
+        if let Some(state) = app_handle.try_state::<AppState>() {
+            if !state.is_paused.load(Ordering::Relaxed) {
+                use crate::sources::MemorySourceTrait;
+                match state.chrome_source.ingest(&state.db, false) {
+                    Ok(stats) => {
+                        if stats.items_indexed > 0 {
+                            crate::commands::log_runtime(
+                                "SYNC_COMPLETED",
+                                &format!("Incremental sync indexed {} items", stats.items_indexed),
+                            );
+                            let db = Arc::clone(&state.db);
+                            let engine = Arc::clone(&state.semantic_engine);
+                            spawn_embedding_worker(db, engine);
+
+                            if let Some(win) = app_handle.get_webview_window("main") {
+                                let _ = win.emit("memory-updated", ());
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Background sync error: {}", e);
+                    }
+                }
+            }
+        }
+    });
+}
+
+#[cfg(target_os = "macos")]
+extern "C" {
+    fn mac_install_modifier_monitor(callback: extern "C" fn());
+    fn mac_set_dismiss_callback(callback: extern "C" fn());
+}
+
+static GLOBAL_APP_HANDLE: std::sync::RwLock<Option<AppHandle>> = std::sync::RwLock::new(None);
+
+#[cfg(target_os = "macos")]
+extern "C" fn on_cocoa_double_control() {
+    if let Ok(guard) = GLOBAL_APP_HANDLE.read() {
+        if let Some(app) = guard.as_ref() {
+            handle_double_control_shortcut(app);
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+extern "C" fn on_cocoa_escape_dismiss() {
+    if let Ok(guard) = GLOBAL_APP_HANDLE.read() {
+        if let Some(app) = guard.as_ref() {
+            let _ = commands::hide_search_window(app.clone());
+        }
+    }
+}
+
+pub fn handle_double_control_shortcut(app: &AppHandle) {
+    let now = current_time_ms();
+    let last = LAST_SHOWN_TIME_MS.load(Ordering::Relaxed);
+    if now - last < 150 {
+        return;
+    }
+    LAST_SHOWN_TIME_MS.store(now, Ordering::Relaxed);
+    let app_handle = app.clone();
+    trigger_background_sync(app);
     let _ = app.run_on_main_thread(move || {
         if let Some(window) = app_handle.get_webview_window("main") {
             let is_visible = window.is_visible().unwrap_or(false);
-            let is_listening = crate::commands::IS_VOICE_LISTENING.load(Ordering::Relaxed);
 
-            // If capsule is visible and already actively listening, ignore duplicate shortcut
-            if is_visible && is_listening {
-                crate::commands::log_runtime("SHORTCUT_IGNORED", "Capsule visible and already listening. Ignoring duplicate ⌃⌃.");
+            // If capsule is already visible, pressing summon shortcut toggles it closed
+            if is_visible {
+                #[cfg(target_os = "macos")]
+                {
+                    unsafe { commands::mac_stop_speech_recognition(); }
+                }
+                commands::IS_VOICE_LISTENING.store(false, Ordering::Relaxed);
+                let _ = window.emit("session-ended", ());
+                let _ = window.hide();
+                crate::commands::log_runtime("SESSION_DISMISSED", "Capsule dismissed via shortcut toggle.");
                 return;
             }
 
@@ -123,6 +194,7 @@ pub fn handle_double_control_shortcut(app: &AppHandle) {
 
 pub fn show_and_focus_window(app: &AppHandle) {
     let app_handle = app.clone();
+    trigger_background_sync(app);
     let _ = app.run_on_main_thread(move || {
         crate::modifier_tap::log_diagnostic("SHOW WINDOW");
         LAST_SHOWN_TIME_MS.store(current_time_ms(), Ordering::Relaxed);
@@ -152,7 +224,7 @@ pub fn toggle_window(app: &AppHandle) {
     let app_handle = app.clone();
     let _ = app.run_on_main_thread(move || {
         if let Some(window) = app_handle.get_webview_window("main") {
-            if window.is_visible().unwrap_or(false) && window.is_focused().unwrap_or(false) {
+            if window.is_visible().unwrap_or(false) {
                 #[cfg(target_os = "macos")]
                 {
                     unsafe { commands::mac_stop_speech_recognition(); }
@@ -160,6 +232,7 @@ pub fn toggle_window(app: &AppHandle) {
                 commands::IS_VOICE_LISTENING.store(false, Ordering::Relaxed);
                 let _ = window.emit("session-ended", ());
                 let _ = window.hide();
+                crate::commands::log_runtime("SESSION_DISMISSED", "Capsule dismissed via shortcut toggle.");
             } else {
                 handle_double_control_shortcut(&app_handle);
             }
@@ -220,6 +293,7 @@ pub fn run() {
                 tauri::WindowEvent::CloseRequested { api, .. } => {
                     api.prevent_close();
                     let _ = window.hide();
+                    commands::log_runtime("SESSION_HIDDEN", "Capsule hidden via close requested.");
                 }
                 tauri::WindowEvent::Focused(false) => {
                     if !IS_ONBOARDING_ACTIVE.load(Ordering::Relaxed) {
@@ -232,6 +306,7 @@ pub fn run() {
                             commands::IS_VOICE_LISTENING.store(false, Ordering::Relaxed);
                             let _ = window.emit("session-ended", ());
                             let _ = window.hide();
+                            commands::log_runtime("SESSION_HIDDEN", "Capsule hidden via focus loss.");
                         }
                     }
                 }
@@ -268,7 +343,11 @@ pub fn run() {
             commands::start_voice_transcription,
             commands::stop_voice_transcription,
             commands::check_speech_permission,
-            commands::request_speech_permission
+            commands::request_speech_permission,
+            commands::exit_app,
+            auth::get_account_profile,
+            auth::initiate_google_auth,
+            auth::sign_out_account
         ])
         .setup(move |app| {
             if let Ok(mut guard) = commands::GLOBAL_APP_HANDLE.lock() {
@@ -327,6 +406,16 @@ pub fn run() {
                 }
             }
 
+            if let Ok(mut guard) = GLOBAL_APP_HANDLE.write() {
+                *guard = Some(app.handle().clone());
+            }
+
+            #[cfg(target_os = "macos")]
+            unsafe {
+                mac_install_modifier_monitor(on_cocoa_double_control);
+                mac_set_dismiss_callback(on_cocoa_escape_dismiss);
+            }
+
             // Start Double-Modifier Listener (Default: Double Control ⌃ ⌃)
             let mod_target = crate::modifier_tap::ModifierTarget::from_str(&shortcut_str);
             crate::modifier_tap::start_modifier_listener(app.handle().clone(), mod_target);
@@ -348,7 +437,7 @@ pub fn run() {
             let pause_item = MenuItem::with_id(app, "pause_toggle", "Pause / Resume Memory", true, None::<&str>)?;
             let reindex_item = MenuItem::with_id(app, "reindex", "Re-index Chrome History", true, None::<&str>)?;
             let settings_item = MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
-            let quit_item = MenuItem::with_id(app, "quit", "Quit Revia", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit Revia", true, Some("CmdOrCtrl+Q"))?;
 
             let tray_menu = Menu::with_items(
                 app,
@@ -415,6 +504,18 @@ pub fn run() {
 
             // Start background embedding worker
             spawn_embedding_worker(Arc::clone(&db), Arc::clone(&semantic_engine));
+
+            // Start continuous background history synchronizer (runs immediately after startup and every 8s)
+            let app_bg = app.handle().clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(600));
+                trigger_background_sync(&app_bg);
+
+                loop {
+                    std::thread::sleep(std::time::Duration::from_secs(8));
+                    trigger_background_sync(&app_bg);
+                }
+            });
 
             Ok(())
         })
