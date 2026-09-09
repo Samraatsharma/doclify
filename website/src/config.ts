@@ -43,12 +43,12 @@ export const CONFIG: ReleaseConfig = {
   githubOwner: "Samraatsharma",
   githubRepo: "doclify",
   zipFilename: "Revia_1.5.0_aarch64.zip",
-  zipSha256: "5d193b00d72632c9627f1226d16429fe1378b18958483c34cc437d1e39a87914",
-  zipSize: "14.1 MB",
+  zipSha256: "0a1aef47f061b13648cffdcf32e45e79ff79ef7338c50bec5c56dca6370812cf",
+  zipSize: "14.6 MB",
   // Legacy aliases
   dmgFilename: "Revia_1.5.0_aarch64.zip",
-  dmgSha256: "5d193b00d72632c9627f1226d16429fe1378b18958483c34cc437d1e39a87914",
-  dmgSize: "14.1 MB",
+  dmgSha256: "0a1aef47f061b13648cffdcf32e45e79ff79ef7338c50bec5c56dca6370812cf",
+  dmgSize: "14.6 MB",
   signingStatus: "Free beta (not yet notarized by Apple)",
   // Direct downloadable ZIP hosted on site
   releaseDownloadUrl: "/downloads/Revia_1.5.0_aarch64.zip",

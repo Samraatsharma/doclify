@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://revia.app/sitemap.xml
+Sitemap: https://revia-3v8.pages.dev/sitemap.xml

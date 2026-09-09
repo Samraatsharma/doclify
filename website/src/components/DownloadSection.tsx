@@ -19,7 +19,7 @@ export const DownloadSection: React.FC = () => {
   const activeSize =
     activePlatform === "mac" ? CONFIG.zipSize : (CONFIG.windowsSize || "12.6 MB");
 
-  const curlCommand = `curl -O https://revia.app${activeDownloadUrl}`;
+  const curlCommand = `curl -O https://revia-3v8.pages.dev${activeDownloadUrl}`;
 
   const copyToClipboard = (text: string, type: "sha" | "curl") => {
     navigator.clipboard.writeText(text);

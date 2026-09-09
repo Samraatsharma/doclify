@@ -2,7 +2,12 @@ import React from "react";
 import { CONFIG } from "../config";
 import { GitBranch } from "lucide-react";
 
-export const Footer: React.FC = () => {
+interface FooterProps {
+  onOpenPrivacy?: () => void;
+  onOpenTerms?: () => void;
+}
+
+export const Footer: React.FC<FooterProps> = ({ onOpenPrivacy, onOpenTerms }) => {
   return (
     <footer
       style={{
@@ -44,7 +49,7 @@ export const Footer: React.FC = () => {
             </div>
 
             <p style={{ fontSize: "14px", lineHeight: 1.6, color: "var(--text-body)", maxWidth: "360px", marginBottom: "16px" }}>
-              “Your computer remembers, so you don’t have to.” A private, ambient memory assistant for Mac. Built with Rust and local vector intelligence.
+              “Your computer remembers, so you don’t have to.” A private, ambient memory assistant for Mac & Windows. Built with Rust and local vector intelligence.
             </p>
 
             <div style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
@@ -82,7 +87,7 @@ export const Footer: React.FC = () => {
           {/* Technical Disclosures & Downloads */}
           <div>
             <div style={{ fontSize: "12px", fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text-ink)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "16px" }}>
-              Distribution
+              Distribution & Legal
             </div>
             <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "10px", fontSize: "13.5px" }}>
               <li>
@@ -98,6 +103,38 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <a href="#privacy" style={{ color: "var(--text-body)", textDecoration: "none" }}>Local Security Architecture</a>
+              </li>
+              <li>
+                <button
+                  onClick={onOpenPrivacy}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    color: "var(--text-body)",
+                    cursor: "pointer",
+                    fontSize: "13.5px",
+                    textAlign: "left",
+                  }}
+                >
+                  Privacy Policy
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={onOpenTerms}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    color: "var(--text-body)",
+                    cursor: "pointer",
+                    fontSize: "13.5px",
+                    textAlign: "left",
+                  }}
+                >
+                  Terms of Service
+                </button>
               </li>
               <li>
                 <a href="#faq" style={{ color: "var(--text-body)", textDecoration: "none" }}>Technical FAQ</a>
@@ -120,8 +157,20 @@ export const Footer: React.FC = () => {
             color: "var(--text-muted)",
           }}
         >
-          <div>
-            © {new Date().getFullYear()} Revia. Released under MIT / Open local-first principles.
+          <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+            <span>© {new Date().getFullYear()} Revia. Released under MIT / Open local-first principles.</span>
+            <button
+              onClick={onOpenPrivacy}
+              style={{ background: "none", border: "none", padding: 0, color: "var(--text-muted)", textDecoration: "underline", cursor: "pointer", fontSize: "12px" }}
+            >
+              Privacy Policy
+            </button>
+            <button
+              onClick={onOpenTerms}
+              style={{ background: "none", border: "none", padding: 0, color: "var(--text-muted)", textDecoration: "underline", cursor: "pointer", fontSize: "12px" }}
+            >
+              Terms of Service
+            </button>
           </div>
 
           <div style={{ fontFamily: "var(--font-mono)", display: "flex", gap: "16px" }}>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "./components/Navbar";
 import { Hero } from "./components/Hero";
 import { SectionDivider } from "./components/SectionDivider";
@@ -16,9 +16,25 @@ import { WindowsTeaser } from "./components/WindowsTeaser";
 import { FAQ } from "./components/FAQ";
 import { Footer } from "./components/Footer";
 import { TryReviaModal } from "./components/TryReviaModal";
+import { LegalModal, type LegalDocType } from "./components/LegalModal";
 
 export function App() {
   const [tryReviaOpen, setTryReviaOpen] = useState(false);
+  const [legalDoc, setLegalDoc] = useState<LegalDocType | null>(null);
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.toLowerCase();
+      if (hash === "#privacy-policy") {
+        setLegalDoc("privacy");
+      } else if (hash === "#terms-of-service" || hash === "#terms") {
+        setLegalDoc("terms");
+      }
+    };
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", backgroundColor: "var(--bg-canvas)" }}>
@@ -137,8 +153,24 @@ export function App() {
         onClose={() => setTryReviaOpen(false)}
       />
 
+      {/* Legal & Compliance Modal (Privacy Policy & Terms of Service) */}
+      <LegalModal
+        isOpen={legalDoc !== null}
+        docType={legalDoc || "privacy"}
+        onClose={() => {
+          setLegalDoc(null);
+          if (window.location.hash.toLowerCase().includes("privacy-policy") || window.location.hash.toLowerCase().includes("terms")) {
+            history.replaceState(null, "", window.location.pathname + window.location.search);
+          }
+        }}
+        onSwitchDoc={(type) => setLegalDoc(type)}
+      />
+
       {/* Editorial Colophon Footer */}
-      <Footer />
+      <Footer
+        onOpenPrivacy={() => setLegalDoc("privacy")}
+        onOpenTerms={() => setLegalDoc("terms")}
+      />
     </div>
   );
 }

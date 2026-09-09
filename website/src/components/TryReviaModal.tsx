@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ReviaOrb, type OrbState } from "./ReviaOrb";
 import { X, Sparkles, ExternalLink, ShieldAlert } from "lucide-react";
 
@@ -62,12 +62,23 @@ const PRESET_QUERIES = [
 ];
 
 export const TryReviaModal: React.FC<TryReviaModalProps> = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
-
   const [inputQuery, setInputQuery] = useState(PRESET_QUERIES[0].query);
   const [activePresetIndex, setActivePresetIndex] = useState(0);
   const [simState, setSimState] = useState<OrbState>("results");
   const [selectedResultIndex, setSelectedResultIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
 
   const handleSelectPreset = (idx: number) => {
     setActivePresetIndex(idx);
@@ -91,10 +102,17 @@ export const TryReviaModal: React.FC<TryReviaModalProps> = ({ isOpen, onClose })
   const currentResults = PRESET_QUERIES[activePresetIndex].results;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+      role="presentation"
+    >
       <div
         className="glass-capsule"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="simulation-modal-title"
         style={{
           width: "100%",
           maxWidth: "600px",
@@ -111,7 +129,7 @@ export const TryReviaModal: React.FC<TryReviaModalProps> = ({ isOpen, onClose })
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <Sparkles size={16} style={{ color: "var(--accent-cyan)" }} />
-            <span style={{ fontSize: "14px", fontWeight: 700, color: "#ffffff" }}>
+            <span id="simulation-modal-title" style={{ fontSize: "14px", fontWeight: 700, color: "#ffffff" }}>
               Interactive Revia Simulation
             </span>
           </div>

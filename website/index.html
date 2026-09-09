@@ -3,29 +3,39 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- Primary Meta Tags -->
     <title>Revia — Your computer remembers, so you don't have to.</title>
     <meta name="title" content="Revia — Your computer remembers, so you don't have to." />
-    <meta name="description" content="Revia is a private, local-first memory assistant for Mac. Find what you remember seeing on your computer without needing the exact title, URL, or website." />
-    <meta name="keywords" content="Revia, Mac app, local-first, memory assistant, desktop search, private search, ambient intelligence, Apple Silicon" />
+    <meta name="description" content="Revia is a private, local-first memory assistant for Mac and Windows. Find what you remember seeing on your computer without needing the exact title, URL, or website." />
+    <meta name="keywords" content="Revia, Mac app, Windows app, local-first, memory assistant, desktop search, private search, ambient intelligence, Apple Silicon" />
     <meta name="author" content="Revia" />
-    <link rel="canonical" href="https://revia.app/" />
+    <link rel="canonical" href="https://revia-3v8.pages.dev/" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://revia.app/" />
+    <meta property="og:site_name" content="Revia" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://revia-3v8.pages.dev/" />
     <meta property="og:title" content="Revia — Your computer remembers, so you don't have to." />
-    <meta property="og:description" content="A private, local-first memory assistant for Mac. Find that thing you saw on your Mac — even when you can't remember where you saw it." />
-    <meta property="og:image" content="/favicon.svg" />
+    <meta property="og:description" content="A private, local-first memory assistant for Mac and Windows. Find that thing you saw on your computer — even when you can't remember where you saw it." />
+    <meta property="og:image" content="https://revia-3v8.pages.dev/og-image.png" />
+    <meta property="og:image:secure_url" content="https://revia-3v8.pages.dev/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Revia — Ambient Desktop Memory Assistant" />
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://revia.app/" />
-    <meta property="twitter:title" content="Revia — Your computer remembers, so you don't have to." />
-    <meta property="twitter:description" content="A private, local-first memory assistant for Mac. Find that thing you saw on your Mac — even when you can't remember where you saw it." />
-    <meta property="twitter:image" content="/favicon.svg" />
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://revia-3v8.pages.dev/" />
+    <meta name="twitter:title" content="Revia — Your computer remembers, so you don't have to." />
+    <meta name="twitter:description" content="A private, local-first memory assistant for Mac and Windows. Find that thing you saw on your computer — even when you can't remember where you saw it." />
+    <meta name="twitter:image" content="https://revia-3v8.pages.dev/og-image.png" />
+    <meta name="twitter:image:alt" content="Revia — Ambient Desktop Memory Assistant" />
 
     <!-- Apple Web App -->
     <meta name="apple-mobile-web-app-title" content="Revia" />
@@ -37,6 +47,45 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500;1,6..72,600&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&display=swap" rel="stylesheet" />
+
+    <!-- Structured Data: SoftwareApplication Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://revia-3v8.pages.dev/#software",
+          "name": "Revia",
+          "operatingSystem": "macOS 12.0+, Windows 10/11",
+          "applicationCategory": "UtilitiesApplication",
+          "softwareVersion": "1.5.0",
+          "description": "A private, local-first ambient memory assistant for Mac and Windows. Find what you remember seeing on your computer with semantic search without needing the exact title, URL, or website.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "Revia",
+            "url": "https://revia-3v8.pages.dev/"
+          },
+          "downloadUrl": [
+            "https://revia-3v8.pages.dev/downloads/Revia_1.5.0_aarch64.zip",
+            "https://revia-3v8.pages.dev/downloads/Revia_Windows_x64.zip"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://revia-3v8.pages.dev/#website",
+          "url": "https://revia-3v8.pages.dev/",
+          "name": "Revia",
+          "description": "Your computer remembers, so you don't have to."
+        }
+      ]
+    }
+    </script>
   </head>
   <body style="background-color: #fcfbf9; margin: 0; padding: 0; overflow-x: hidden;">
     <div id="root"></div>
